@@ -12,3 +12,5 @@
 hs_err_pid*
 
 target/*
+src/main/resources/hibernate.properties
+src/test/resources/hibernate.properties
