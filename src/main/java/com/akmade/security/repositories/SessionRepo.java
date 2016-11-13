@@ -1,9 +1,5 @@
 package com.akmade.security.repositories;
 
-import java.util.Collection;
-import java.util.function.Consumer;
-import java.util.function.Function;
-
 import org.hibernate.FlushMode;
 import org.hibernate.Session;
 import org.hibernate.resource.transaction.spi.TransactionStatus;
@@ -15,21 +11,12 @@ import com.akmade.security.data.HibernateSessionFactory;
 import com.akmade.security.data.HibernateSessionFactory.DataSource;
 
 public class SessionRepo {
-	protected DataSource dataSource = DataSource.DEFAULT;
 	protected static Logger logger = LoggerFactory.getLogger(SessionRepo.class);
 
 
 	public SessionRepo () {
 	}
 	
-	public SessionRepo(DataSource dataSource) {
-		this.dataSource = dataSource;
-	}
-	
-	protected Session createSession() {
-		return createSession(dataSource);
-	}
-
 	protected Session createSession(DataSource ds) {
 		Session session = HibernateSessionFactory.getInstance().createSession(ds);
 		session.setFlushMode(FlushMode.MANUAL);
@@ -87,74 +74,5 @@ public class SessionRepo {
 		logger.error(msg, ex);
 		return ex;
 	}	
-	
-	protected Consumer<Session> makeTransaction(Function<Session, Consumer<Session>> fn, String msg) {
-		logger.info("Creating the transaction for " + msg +".");
-		Session session = createSession(dataSource);
-		try {
-			return fn.apply(session);
-		} catch (Exception e) {
-			rollback(session);
-			throw logAndThrowError("Error creating the transactions." + e.getMessage());
-		} finally {
-			logger.info("made");
-			endSession(session);
-		}	
-	}
-	
-	protected <T> Object makeHibernate(Function<Session, T> fn, String objectType) {
-		Session session = createSession(dataSource);
-		logger.info("Making hibernate object " + objectType);
-		try {
-			return fn.apply(session);
-		} catch (Exception e) {
-			rollback(session);
-			throw logAndThrowError("Error creating the " + objectType +"." + e.getMessage());
-		} finally {
-			logger.info("made");
-			endSession(session);
-		}
-	}
-	
-	protected void runTransaction(Consumer<Session> c) {
-		Session session = createSession(dataSource);
-		logger.debug("Saving!");
-		try {
-			c.accept(session);
-		} catch (Exception e) {
-			rollbackAndClose(session);
-			throw logAndThrowError("Error running the transaction. " + e.getMessage());
-		} finally {
-			logger.debug("saved");
-			endSession(session);
-		}			
-	}
-	
-	
-	protected <T> Collection<T> runQuerys(Function<Session, Collection<T>> q) {
-		Session session = createSession(dataSource);
-		logger.debug("Running query."); 
-		try {
-			return q.apply(session);
-		} catch (Exception e) {
-			rollbackAndClose(session);
-			throw logAndThrowError("Error running the query. " + e.getMessage());
-		} finally {
-			endSession(session);
-		}
-	}
-	
-	protected <T> T runQuery(Function<Session, T> q) {
-		Session session = createSession(dataSource);
-		logger.debug("Running query."); 
-		try {
-			return q.apply(session);
-		} catch (Exception e) {
-			rollbackAndClose(session);
-			throw logAndThrowError("Error running the query. " + e.getMessage());
-		} finally {
-			endSession(session);
-		}
-	}
 	
 }

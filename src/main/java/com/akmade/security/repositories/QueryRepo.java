@@ -3,12 +3,30 @@ package com.akmade.security.repositories;
 import java.util.Collection;
 import java.util.function.Function;
 import java.util.function.Supplier;
+
+import org.hibernate.Session;
+
+import com.akmade.security.data.HibernateSessionFactory.DataSource;
 import com.akmade.security.dto.DataTransferObjects;
 
 public class QueryRepo extends SessionRepo {
-	
+	private DataSource dataSource = DataSource.DEFAULT;
+
 	public QueryRepo() {
 		super();
+	}
+	
+	private <T> T runQuery(Function<Session, T> q) {
+		Session session = createSession(dataSource);
+		logger.debug("Running query."); 
+		try {
+			return q.apply(session);
+		} catch (Exception e) {
+			rollbackAndClose(session);
+			throw logAndThrowError("Error running the query. " + e.getMessage());
+		} finally {
+			endSession(session);
+		}
 	}
 
 	public Supplier<Collection<String>> getAddressTypes = 
