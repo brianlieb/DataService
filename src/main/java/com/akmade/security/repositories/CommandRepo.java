@@ -16,6 +16,11 @@ public class CommandRepo extends SessionRepo {
 		super();
 	}
 	
+	public CommandRepo(DataSource ds) {
+		super();
+		this.dataSource = ds;
+	}
+	
 	private Consumer<Session> makeCommand(Function<Session, Consumer<Session>> fn) {
 		Session session = createSession(dataSource);
 		try {

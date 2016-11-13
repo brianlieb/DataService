@@ -16,6 +16,11 @@ public class QueryRepo extends SessionRepo {
 		super();
 	}
 	
+	public QueryRepo(DataSource ds) {
+		super();
+		this.dataSource = ds;
+	}
+	
 	private <T> T runQuery(Function<Session, T> q) {
 		Session session = createSession(dataSource);
 		logger.debug("Running query."); 
