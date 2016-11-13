@@ -12,6 +12,10 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.hibernate.Session;
 
+import static com.akmade.security.Constants.MAILING_ADDRESS;
+import static com.akmade.security.Constants.SHIPPING_ADDRESS;
+
+
 import com.akmade.security.data.Address;
 import com.akmade.security.data.AddressType;
 import com.akmade.security.data.CompanyAddress;
@@ -111,9 +115,9 @@ public class AddressRepo {
 
 	protected static Function<User, Function<DataTransferObjects.Account, Function<Session, Collection<Address>>>> makeNewAddresses = user -> account -> session -> {
 		Set<Address> addresses = new HashSet<>();
-		addresses.add(makeNewAddress.apply(user).apply(getAddressTypeByType.apply("Mailing").apply(session))
+		addresses.add(makeNewAddress.apply(user).apply(getAddressTypeByType.apply(MAILING_ADDRESS).apply(session))
 				.apply(account.getMailingAddress()));
-		addresses.add(makeNewAddress.apply(user).apply(getAddressTypeByType.apply("Shipping").apply(session))
+		addresses.add(makeNewAddress.apply(user).apply(getAddressTypeByType.apply(SHIPPING_ADDRESS).apply(session))
 				.apply(account.getShippingAddress()));
 		return addresses;
 	};
@@ -130,25 +134,28 @@ public class AddressRepo {
 			.stream().filter(a -> a.getAddressType().getType().equals(type)).findFirst().orElse(null);
 	
 	protected static Function<User, Address> getMailingAddress = user -> getMyAddress.apply(user.getAddresses())
-			.apply("Mailing");
+			.apply(MAILING_ADDRESS);
 
 	protected static Function<User, Address> getShippinAddress = user -> getMyAddress.apply(user.getAddresses())
-			.apply("Shipping");
+			.apply(SHIPPING_ADDRESS);
 
 	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistMailingAddress = (
 			user,
 			accountDTO) -> session -> accountDTO.getMailingAddress() == null
 					? CommandManager.deleteAddress.apply(getMailingAddress.apply(user))
 					: getAddresses.apply(user)
-							.apply(getAddressTypeByType.apply("Mailing").apply(session), accountDTO.getMailingAddress())
+							.apply(getAddressTypeByType.apply(MAILING_ADDRESS)
+									.apply(session), accountDTO.getMailingAddress())
 							.apply(session);
 
 	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistShippingAddress = (
 			user,
 			accountDTO) -> session -> accountDTO.getShippingAddress() == null
 					? CommandManager.deleteAddress.apply(getShippinAddress.apply(user))
-					: getAddresses.apply(user).apply(getAddressTypeByType.apply("Shipping").apply(session),
-							accountDTO.getShippingAddress()).apply(session);
+					: getAddresses.apply(user)
+						.apply(getAddressTypeByType.apply(SHIPPING_ADDRESS)
+									.apply(session), accountDTO.getShippingAddress())
+						.apply(session);
 
 	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistAddresses = (
 			user, accountDTO) -> session -> persistShippingAddress.apply(user, accountDTO).apply(session)

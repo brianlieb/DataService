@@ -17,6 +17,11 @@ import com.akmade.security.data.PhoneType;
 import com.akmade.security.data.User;
 import com.akmade.security.dto.DataTransferObjects;
 
+import static com.akmade.security.Constants.HOME_PHONE;
+import static com.akmade.security.Constants.MOBILE_PHONE;
+import static com.akmade.security.Constants.WORK_PHONE;
+
+
 public class PhoneRepo {
 	protected static Function<Collection<PhoneType>, Collection<String>> makeNewPhoneTypesDTOs =
 			at -> at
@@ -79,11 +84,11 @@ public class PhoneRepo {
 
 	protected static Function<User, Function<DataTransferObjects.Account, Function<Session, Collection<Phone>>>> makeNewPhones = user -> account -> session -> {
 		Set<Phone> phones = new HashSet<>();
-		phones.add(makeNewPhone.apply(user).apply(getPhoneTypeByType.apply("Home").apply(session))
+		phones.add(makeNewPhone.apply(user).apply(getPhoneTypeByType.apply(HOME_PHONE).apply(session))
 				.apply(account.getHomePhone()));
-		phones.add(makeNewPhone.apply(user).apply(getPhoneTypeByType.apply("Mobile").apply(session))
+		phones.add(makeNewPhone.apply(user).apply(getPhoneTypeByType.apply(MOBILE_PHONE).apply(session))
 				.apply(account.getMobilePhone()));
-		phones.add(makeNewPhone.apply(user).apply(getPhoneTypeByType.apply("Work").apply(session))
+		phones.add(makeNewPhone.apply(user).apply(getPhoneTypeByType.apply(WORK_PHONE).apply(session))
 				.apply(account.getWorkPhone()));
 		return phones;
 	};
@@ -99,18 +104,18 @@ public class PhoneRepo {
 	protected static Function<Collection<Phone>, Function<String, Phone>> getMyPhone = phones -> type -> phones.stream()
 			.filter(p -> p.getPhoneType().getType().equals(type)).findFirst().orElse(null);
 
-	protected static Function<User, Phone> getHomePhone = user -> getMyPhone.apply(user.getPhones()).apply("Home");
+	protected static Function<User, Phone> getHomePhone = user -> getMyPhone.apply(user.getPhones()).apply(HOME_PHONE);
 
-	protected static Function<User, Phone> getMobilePhone = user -> getMyPhone.apply(user.getPhones()).apply("Mobile");
+	protected static Function<User, Phone> getMobilePhone = user -> getMyPhone.apply(user.getPhones()).apply(MOBILE_PHONE);
 
-	protected static Function<User, Phone> getWorkPhone = user -> getMyPhone.apply(user.getPhones()).apply("Work");
+	protected static Function<User, Phone> getWorkPhone = user -> getMyPhone.apply(user.getPhones()).apply(WORK_PHONE);
 
 	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistHomePhone = (
 			user,
 			accountDTO) -> session -> accountDTO.getHomePhone() == null
 					? CommandManager.deletePhone.apply(getHomePhone.apply(user))
 					: getPhones.apply(user)
-							.apply(getPhoneTypeByType.apply("Home").apply(session), accountDTO.getHomePhone())
+							.apply(getPhoneTypeByType.apply(HOME_PHONE).apply(session), accountDTO.getHomePhone())
 							.apply(session);
 
 	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistWorkPhone = (
@@ -118,7 +123,7 @@ public class PhoneRepo {
 			accountDTO) -> session -> accountDTO.getWorkPhone() == null
 					? CommandManager.deletePhone.apply(getWorkPhone.apply(user))
 					: getPhones.apply(user)
-							.apply(getPhoneTypeByType.apply("Work").apply(session), accountDTO.getHomePhone())
+							.apply(getPhoneTypeByType.apply(WORK_PHONE).apply(session), accountDTO.getHomePhone())
 							.apply(session);
 
 	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistMobilePhone = (
@@ -126,7 +131,7 @@ public class PhoneRepo {
 			accountDTO) -> session -> accountDTO.getMobilePhone() == null
 					? CommandManager.deletePhone.apply(getMobilePhone.apply(user))
 					: getPhones.apply(user)
-							.apply(getPhoneTypeByType.apply("Mobile").apply(session), accountDTO.getHomePhone())
+							.apply(getPhoneTypeByType.apply(MOBILE_PHONE).apply(session), accountDTO.getHomePhone())
 							.apply(session);
 
 	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistPhones = (

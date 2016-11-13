@@ -1,10 +1,10 @@
 package com.akmade.security.repositories;
 
 import static com.akmade.security.Constants.HOME_PHONE;
-import static com.akmade.security.Constants.MAILING_ADDRESS;
 import static com.akmade.security.Constants.MOBILE_PHONE;
-import static com.akmade.security.Constants.SHIPPING_ADDRESS;
 import static com.akmade.security.Constants.WORK_PHONE;
+import static com.akmade.security.Constants.MAILING_ADDRESS;
+import static com.akmade.security.Constants.SHIPPING_ADDRESS;
 
 import java.util.Collection;
 import java.util.Date;
