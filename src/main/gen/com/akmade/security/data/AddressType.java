@@ -1,11 +1,13 @@
 package com.akmade.security.data;
-// Generated Oct 22, 2016 7:06:32 AM by Hibernate Tools 5.2.0.Beta1
+// Generated Nov 6, 2016 11:40:20 AM by Hibernate Tools 5.2.0.Beta1
 
 import java.util.HashSet;
 import java.util.Set;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import static javax.persistence.GenerationType.IDENTITY;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
@@ -17,7 +19,7 @@ import javax.persistence.Table;
 @Table(name = "address_type", catalog = "security")
 public class AddressType implements java.io.Serializable {
 
-	private int addressTypeId;
+	private Integer addressTypeId;
 	private String type;
 	private String description;
 	private Set<Address> addresses = new HashSet<Address>(0);
@@ -25,26 +27,25 @@ public class AddressType implements java.io.Serializable {
 	public AddressType() {
 	}
 
-	public AddressType(int addressTypeId, String type) {
-		this.addressTypeId = addressTypeId;
+	public AddressType(String type) {
 		this.type = type;
 	}
 
-	public AddressType(int addressTypeId, String type, String description, Set<Address> addresses) {
-		this.addressTypeId = addressTypeId;
+	public AddressType(String type, String description, Set<Address> addresses) {
 		this.type = type;
 		this.description = description;
 		this.addresses = addresses;
 	}
 
 	@Id
+	@GeneratedValue(strategy = IDENTITY)
 
 	@Column(name = "address_type_id", unique = true, nullable = false)
-	public int getAddressTypeId() {
+	public Integer getAddressTypeId() {
 		return this.addressTypeId;
 	}
 
-	public void setAddressTypeId(int addressTypeId) {
+	public void setAddressTypeId(Integer addressTypeId) {
 		this.addressTypeId = addressTypeId;
 	}
 

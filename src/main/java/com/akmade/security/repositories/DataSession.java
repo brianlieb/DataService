@@ -1,4 +1,4 @@
-package com.akmade.security.data;
+package com.akmade.security.repositories;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

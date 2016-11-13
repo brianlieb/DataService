@@ -1,0 +1,64 @@
+syntax = "proto3";
+package com.akmade.security.dto;
+
+option java_package = "com.akmade.security.dto";
+option java_outer_classname = "DataTransferObjects";
+
+message Role {
+	string role = 1;
+	string description = 2;
+	
+	enum RoleType {
+		SYSADMIN = 0;
+		USER = 1;
+		BIZADMIN = 2;
+	}
+	
+	RoleType roleType = 3;
+}
+
+message Address {
+	string address1 = 1;
+	string address2 = 2;
+	string city = 3;
+	string state = 4;
+	string country = 5;
+	string postalCode = 6;
+}
+
+message Company {
+	int32 companyId = 1;
+	string company = 2;
+	Address address = 3;
+	string phone = 4;
+	repeated Account users = 5;
+}
+
+message CompanyList {
+	repeated Company company = 1;
+}
+
+message Account {
+	int32 userId = 1;
+	string userName = 2;
+	string email = 3;
+	string firstName = 4;
+	string middleInitial = 5;
+	string lastName = 6;
+	Address shippingAddress = 7;
+	Address mailingAddress = 8;
+	
+	string mobilePhone = 9;
+	string homePhone = 10;
+	string workPhone = 11;
+	
+	Company company = 12;
+	bool primary = 13;
+	bool administrative = 14;
+	bool billing = 15;
+	repeated Role roles = 16;
+}
+
+message AccountList {
+	repeated Account account = 1;
+}

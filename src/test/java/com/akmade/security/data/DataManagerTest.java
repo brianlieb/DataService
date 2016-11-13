@@ -3,18 +3,22 @@ package com.akmade.security.data;
 import static org.junit.Assert.*;
 
 import java.util.Collection;
-import java.util.Date;
-
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.akmade.security.repositories.CommandRepo;
+import com.akmade.security.repositories.QueryRepo;
+
 public class DataManagerTest {
+	CommandRepo cmd;
+	QueryRepo qry;
+	
 	@Before
 	public void setUp() throws Exception {
+		cmd = new CommandRepo();
+		qry = new QueryRepo();
 	}
 
 	@After
@@ -24,13 +28,11 @@ public class DataManagerTest {
 
 	@Test
 	public void testSaveAddressTypes() {
-		SecurityCommandRepository cmdRepo = new SecurityCommandRepository();
-		cmdRepo.saveAddressType(new ImmutablePair<String, String>("Home", "This is where you live."));
-		cmdRepo.saveAddressType(new ImmutablePair<String, String>("Billing", "This is where you receive your credit card statements."));
-		cmdRepo.saveAddressType(new ImmutablePair<String, String>("Shipping", "This is where you receive shipments."));
+		cmd.saveAddressType(new ImmutablePair<String, String>("Home", "This is where you live."));
+		cmd.saveAddressType(new ImmutablePair<String, String>("Billing", "This is where you receive your credit card bills."));
+		cmd.saveAddressType(new ImmutablePair<String, String>("Shipping", "This is where your receive packages."));
 		
-		SecurityQueryRepository qryRepo = new SecurityQueryRepository();
-		Collection<String> types = qryRepo.getAddressTypes();
+		Collection<String> types = qry.getAddressTypes.get();
 		assertTrue(types.size() == 3);
 	}
 

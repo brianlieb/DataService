@@ -1,5 +1,5 @@
 package com.akmade.security.data;
-// Generated Oct 22, 2016 7:06:32 AM by Hibernate Tools 5.2.0.Beta1
+// Generated Nov 6, 2016 11:40:20 AM by Hibernate Tools 5.2.0.Beta1
 
 import javax.persistence.AttributeOverride;
 import javax.persistence.AttributeOverrides;
