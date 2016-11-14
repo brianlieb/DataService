@@ -8,7 +8,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.hibernate.Session;
 
 import com.akmade.security.data.Role;
@@ -16,64 +15,67 @@ import com.akmade.security.data.RoleType;
 import com.akmade.security.data.User;
 import com.akmade.security.data.UserRole;
 import com.akmade.security.data.UserRoleId;
-import com.akmade.security.dto.DataTransferObjects;
+import com.akmade.messaging.security.dto.SecurityDTO;
 
 public class RoleRepo {
-	protected static Function<DataTransferObjects.Role, Function<Session, Role>> getDBRole =
+	protected static Function<SecurityDTO.Role, Function<Session, Role>> getDBRole =
 			dto ->
 				session ->  QueryManager.getRole(dto.getRole(), session);
 				
-	protected static BiFunction<User, DataTransferObjects.Role, Function<Session, UserRole>> makeUserRole = (user,
+	protected static BiFunction<User, SecurityDTO.Role, Function<Session, UserRole>> makeUserRole = (user,
 			dto) -> session -> {
 				Role role = getDBRole.apply(dto).apply(session);
 				return role != null ? new UserRole(new UserRoleId(user.getUserId(), role.getRoleId()), role, user)
 						: null;
 			};
 
-	protected static BiFunction<User, DataTransferObjects.Role, Function<Session, UserRole>> getUserRole = (user,
+	protected static BiFunction<User, SecurityDTO.Role, Function<Session, UserRole>> getUserRole = (user,
 			dto) -> session -> {
 				UserRole uRole = QueryManager.getUserRole(user.getUserId(), dto.getRole(), session);
 				return uRole == null ? makeUserRole.apply(user, dto).apply(session) : null;
 			};
 
-	protected static BiFunction<User, Collection<DataTransferObjects.Role>, Function<Session, Collection<UserRole>>> makeUserRoles = (
+	protected static BiFunction<User, Collection<SecurityDTO.Role>, Function<Session, Collection<UserRole>>> makeUserRoles = (
 			user, roles) -> session -> roles.stream().map(role -> getUserRole.apply(user, role).apply(session))
 					.collect(Collectors.toSet());
 			
-	protected static Function<Collection<RoleType>, Collection<String>> makeNewRoleTypesDTOs =
+	protected static Function<Collection<RoleType>, Collection<SecurityDTO.Type>> makeNewRoleTypesDTOs =
 			at -> at
 					.stream()
-					.map(t -> new String(t.getType()))
+					.map(t -> SecurityDTO.Type.newBuilder()
+								.setType(t.getType())
+								.setDescription(t.getDescription())
+								.build())
 					.collect(Collectors.toList());
 			
-	protected static Function<Session, Collection<String>> getRoleTypeDTOS = 
+	protected static Function<Session, Collection<SecurityDTO.Type>> getRoleTypeDTOS = 
 			session -> makeNewRoleTypesDTOs.apply(QueryManager.getRoleTypes(session));
 				
 	
-	protected static Function<Role, DataTransferObjects.Role> makeNewRoleDTO = 
-			role -> DataTransferObjects
+	protected static Function<Role, SecurityDTO.Role> makeNewRoleDTO = 
+			role -> SecurityDTO
 						.Role.newBuilder()
 							.setRole(role.getRole())
-							.setRoleType(DataTransferObjects.Role.RoleType.valueOf(role.getRoleType().getType()))
+							.setRoleType(SecurityDTO.Role.RoleType.valueOf(role.getRoleType().getType()))
 							.setDescription(role.getDescription())
 							.build();
 				
-	protected static Function<Collection<UserRole>, Collection<DataTransferObjects.Role>> makeNewRoleDTOs =
+	protected static Function<Collection<UserRole>, Collection<SecurityDTO.Role>> makeNewRoleDTOs =
 				userRoles -> userRoles
 								.parallelStream()
 								.map(ur -> makeNewRoleDTO.apply(ur.getRole()))
 								.collect(Collectors.toList());
 
-	protected static Function<RoleType, Function<ImmutablePair<String, String>, RoleType>> mutateRoleType =
+	protected static Function<RoleType, Function<SecurityDTO.Type, RoleType>> mutateRoleType =
 			oldRoleType ->
 					dto -> {
-								oldRoleType.setType(dto.left);
-								oldRoleType.setDescription(dto.right);
+								oldRoleType.setType(dto.getType());
+								oldRoleType.setDescription(dto.getDescription());
 								return oldRoleType;
 					};
 						
-	protected static Function<ImmutablePair<String, String>, RoleType> makeRoleType =
-			dto -> new RoleType(dto.left, dto.right, null);
+	protected static Function<SecurityDTO.Type, RoleType> makeRoleType =
+			dto -> new RoleType(dto.getType(), dto.getDescription(), null);
 			
 	protected static Function<String, Function<Session, RoleType>> getRoleTypeByType =
 			type ->
@@ -93,7 +95,7 @@ public class RoleRepo {
 						.map(ur -> CommandManager.deleteUserRole.apply(ur)).collect(Collectors.toList());
 			};
 			
-	protected static BiFunction<User, Collection<DataTransferObjects.Role>, Function<Session, Consumer<Session>>> persistUserRoles = (
+	protected static BiFunction<User, Collection<SecurityDTO.Role>, Function<Session, Consumer<Session>>> persistUserRoles = (
 			user, roles) -> session -> {
 				Collection<UserRole> newUserRoles = RoleRepo.makeUserRoles.apply(user, roles).apply(session);
 				return deleteUserRoles.apply(user.getUserRoles(), newUserRoles)
@@ -102,18 +104,18 @@ public class RoleRepo {
 			
 					
 	
-	protected static Function<ImmutablePair<String, String>, Function<Session, Consumer<Session>>> persistRoleType =
+	protected static Function<SecurityDTO.Type, Function<Session, Consumer<Session>>> persistRoleType =
 			roleTypeDTO ->
 				session -> {
-					RoleType roleType =	getRoleTypeByType.apply(roleTypeDTO.left).apply(session);
+					RoleType roleType =	getRoleTypeByType.apply(roleTypeDTO.getType()).apply(session);
 					return roleType!=null?
 						CommandManager.saveRoleType.apply(mutateRoleType.apply(roleType).apply(roleTypeDTO)):
 						CommandManager.saveRoleType.apply(makeRoleType.apply(roleTypeDTO));
 				};
 
-	protected static Function<ImmutablePair<String, String>, Function<Session, Consumer<Session>>> deleteRoleType =
+	protected static Function<SecurityDTO.Type, Function<Session, Consumer<Session>>> deleteRoleType =
 			roleTypeDTO ->
-				session -> CommandManager.deleteRoleType.apply(getRoleTypeByType.apply(roleTypeDTO.left).apply(session));
+				session -> CommandManager.deleteRoleType.apply(getRoleTypeByType.apply(roleTypeDTO.getType()).apply(session));
 
 
 }

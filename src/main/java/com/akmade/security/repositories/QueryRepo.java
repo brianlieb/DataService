@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 import org.hibernate.Session;
 
 import com.akmade.security.data.HibernateSessionFactory.DataSource;
-import com.akmade.security.dto.DataTransferObjects;
+import com.akmade.messaging.security.dto.SecurityDTO;
 
 public class QueryRepo extends SessionRepo {
 	private DataSource dataSource = DataSource.DEFAULT;
@@ -34,24 +34,24 @@ public class QueryRepo extends SessionRepo {
 		}
 	}
 
-	public Supplier<Collection<String>> getAddressTypes = 
+	public Supplier<Collection<SecurityDTO.Type>> getAddressTypes = 
 			() -> runQuery(AddressRepo.getAddressTypeDTOs);
 
-	public Function<String, Supplier<DataTransferObjects.Account>> getAccountByUsername =
+	public Function<String, Supplier<SecurityDTO.Account>> getAccountByUsername =
 			username ->
 				() -> runQuery(UserRepo.getAccountDTOByUsername.apply(username));
 				
-	public Supplier<Collection<DataTransferObjects.Account>> getAccounts = 
+	public Supplier<Collection<SecurityDTO.Account>> getAccounts = 
 			() -> runQuery(UserRepo.getAccountDTOs); 
 
-	public Supplier<Collection<String>> getRoleTypes = 
+	public Supplier<Collection<SecurityDTO.Type>> getRoleTypes = 
 			() -> runQuery(RoleRepo.getRoleTypeDTOS);
 			
-	public Function<Integer, Supplier<DataTransferObjects.Account>> getAccountById =
+	public Function<Integer, Supplier<SecurityDTO.Account>> getAccountById =
 			userId ->
 				() -> runQuery(UserRepo.getAccountDTOById.apply(userId));	 
 
-	public Supplier<Collection<String>> getPhoneTypes = 
+	public Supplier<Collection<SecurityDTO.Type>> getPhoneTypes = 
 			() -> runQuery(PhoneRepo.getPhoneTypeDTOS);
 
 }

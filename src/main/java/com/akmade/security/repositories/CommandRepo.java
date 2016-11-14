@@ -3,11 +3,10 @@ package com.akmade.security.repositories;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.hibernate.Session;
 
 import com.akmade.security.data.HibernateSessionFactory.DataSource;
-import com.akmade.security.dto.DataTransferObjects;
+import com.akmade.messaging.security.dto.SecurityDTO;
 
 public class CommandRepo extends SessionRepo {
 	private DataSource dataSource = DataSource.DEFAULT;
@@ -50,42 +49,42 @@ public class CommandRepo extends SessionRepo {
 		}			
 	}
 	
-	public void saveAddressType(ImmutablePair<String, String> dto) {
-		logger.info("Making Address Type for: " + dto.left + " " + dto.right);
+	public void saveAddressType(SecurityDTO.Type dto) {
+		logger.info("Making Address Type for: " + dto.getType() + " " + dto.getDescription());
  		runCommand(AddressRepo.persistAddressType.apply(dto));
 	}
 	
-	public void deleteAddressType(ImmutablePair<String, String> dto) {
-		logger.info("Deleting Address Type for: " + dto.left + " " + dto.right);
+	public void deleteAddressType(SecurityDTO.Type dto) {
+		logger.info("Deleting Address Type for: " + dto.getType() + " " + dto.getDescription());
 		runCommand(AddressRepo.deleteAddressType.apply(dto));
 	}
 					
-	public void saveRoleType(ImmutablePair<String, String> dto) {
-		logger.info("Making Role Type for: " + dto.left + " " + dto.right);
+	public void saveRoleType(SecurityDTO.Type dto) {
+		logger.info("Making Role Type for: " + dto.getType() + " " + dto.getDescription());
  		runCommand(RoleRepo.persistRoleType.apply(dto));
 	}
 	
-	public void deleteRoleType(ImmutablePair<String, String> dto) {
-		logger.info("Deleting Role Type for: " + dto.left + " " + dto.right);
+	public void deleteRoleType(SecurityDTO.Type dto) {
+		logger.info("Deleting Role Type for: " + dto.getType() + " " + dto.getDescription());
 		runCommand(RoleRepo.deleteRoleType.apply(dto));
 	}
 
-	public void savePhoneType(ImmutablePair<String, String> dto) {
-		logger.info("Making Phone Type for: " + dto.left + " " + dto.right);
+	public void savePhoneType(SecurityDTO.Type dto) {
+		logger.info("Making Phone Type for: " + dto.getType() + " " + dto.getDescription());
 		runCommand(PhoneRepo.persistPhoneType.apply(dto));
 	}
 	
-	public void deletePhoneType(ImmutablePair<String, String> dto) {
-		logger.info("Deleting Phone Type for: " + dto.left + " " + dto.right);
+	public void deletePhoneType(SecurityDTO.Type dto) {
+		logger.info("Deleting Phone Type for: " + dto.getType() + " " + dto.getDescription());
 		runCommand(PhoneRepo.deletePhoneType.apply(dto));
 	}
 
-	public void saveCompany(DataTransferObjects.Company companyDTO) {
+	public void saveCompany(SecurityDTO.Company companyDTO) {
 		logger.info("Saving the company: " + companyDTO.getCompany() + ".");
 		runCommand(CompanyRepo.persistCompanyTree.apply(companyDTO));
 	}
 	
-	public void saveUser(DataTransferObjects.Account accountDTO) {
+	public void saveUser(SecurityDTO.Account accountDTO) {
 		logger.info("Saving the user: " + accountDTO.getUserName() + ".");
 		runCommand(UserRepo.persistUserTree.apply(accountDTO));
 	}

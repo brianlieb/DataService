@@ -18,11 +18,11 @@ import org.hibernate.Session;
 
 import com.akmade.security.data.User;
 import com.akmade.security.data.UserCompany;
-import com.akmade.security.dto.DataTransferObjects;
+import com.akmade.messaging.security.dto.SecurityDTO;
 
 public class UserRepo {
 	
-	protected static Function<DataTransferObjects.Account, Function<Session, User>> getDBUser = dto -> session -> QueryManager
+	protected static Function<SecurityDTO.Account, Function<Session, User>> getDBUser = dto -> session -> QueryManager
 			.getUserById(dto.getUserId(), session);
 	
 	protected static Predicate<User> isPrimaryContact =
@@ -34,8 +34,8 @@ public class UserRepo {
 	protected static Predicate<User> isBillingContact =
 			u -> u.getUserCompany()!=null?u.getUserCompany().isBilling():false;
 
-	protected static Function<User, DataTransferObjects.Account> makeAccountDTO = 
-			user ->	DataTransferObjects.
+	protected static Function<User, SecurityDTO.Account> makeAccountDTO = 
+			user ->	SecurityDTO.
 						Account.newBuilder()
 							.setUserName(user.getUsername())
 							.setEmail(user.getEmail())
@@ -54,23 +54,23 @@ public class UserRepo {
 							.addAllRoles(RoleRepo.makeNewRoleDTOs.apply(user.getUserRoles()))
 							.build();
 						
-	protected static Function<Collection<User>, Collection<DataTransferObjects.Account>> makeAccountDTOs =
+	protected static Function<Collection<User>, Collection<SecurityDTO.Account>> makeAccountDTOs =
 			users -> users.parallelStream()
 						.map(u -> makeAccountDTO.apply(u))
 						.collect(Collectors.toList());
 			
-	protected static Function<Session, Collection<DataTransferObjects.Account>> getAccountDTOs =
+	protected static Function<Session, Collection<SecurityDTO.Account>> getAccountDTOs =
 			session -> makeAccountDTOs.apply(QueryManager.getUsers(session));
 			
-	protected static Function<String, Function<Session, DataTransferObjects.Account>> getAccountDTOByUsername =
+	protected static Function<String, Function<Session, SecurityDTO.Account>> getAccountDTOByUsername =
 			username ->
 				session -> makeAccountDTO.apply(QueryManager.getUserByUsername(username, session));
 	
-	protected static Function<Integer, Function<Session, DataTransferObjects.Account>> getAccountDTOById =
+	protected static Function<Integer, Function<Session, SecurityDTO.Account>> getAccountDTOById =
 			userId ->
 				session -> makeAccountDTO.apply(QueryManager.getUserById(userId, session));
 			
-	protected static Function<DataTransferObjects.Account, Function<Session, User>> makeNewUser = dto -> session -> {
+	protected static Function<SecurityDTO.Account, Function<Session, User>> makeNewUser = dto -> session -> {
 		User newUser = new User(dto.getUserName(), null, // TODO password?
 				dto.getEmail(), dto.getFirstName(), dto.getMiddleInitial().charAt(0), dto.getLastName(), false,
 				new Date(), new Date(), null, null, null,
@@ -86,17 +86,17 @@ public class UserRepo {
 			newUserCompany) -> CompanyRepo.isSameUserCompany.test(oldUserCompany, newUserCompany)
 					? CommandManager.deleteUserCompany.apply(oldUserCompany) : CommandManager.doNothing;
 
-	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, UserCompany>> makeUserCompany = 
+	protected static BiFunction<User, SecurityDTO.Account, Function<Session, UserCompany>> makeUserCompany = 
 			(user, accountDTO) -> session -> CompanyRepo.getUserCompanyForAccount.apply(accountDTO).apply(session);
 
-	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistUserCompany = (
+	protected static BiFunction<User, SecurityDTO.Account, Function<Session, Consumer<Session>>> persistUserCompany = (
 			user, accountDTO) -> session -> {
 				UserCompany newUserCompany = makeUserCompany.apply(user, accountDTO).apply(session);
 				return deleteUserCompany.apply(user.getUserCompany(), newUserCompany)
 						.andThen(CommandManager.saveUserCompany.apply(newUserCompany));
 			};
 
-	protected static BiFunction<User, DataTransferObjects.Account, Consumer<Session>> persistUser = (oldUser, dto) -> {
+	protected static BiFunction<User, SecurityDTO.Account, Consumer<Session>> persistUser = (oldUser, dto) -> {
 		oldUser.setFirstName(dto.getFirstName());
 		oldUser.setMiddleInitial(dto.getMiddleInitial().charAt(0));
 		oldUser.setLastName(dto.getLastName());
@@ -107,7 +107,7 @@ public class UserRepo {
 		return CommandManager.saveUser.apply(oldUser);
 	};
 
-	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistOldUserTree = (
+	protected static BiFunction<User, SecurityDTO.Account, Function<Session, Consumer<Session>>> persistOldUserTree = (
 			oldUser,
 			dto) -> session -> persistUserCompany.apply(oldUser, dto).apply(session)
 					.andThen(PhoneRepo.persistPhones.apply(oldUser, dto).apply(session))
@@ -115,7 +115,7 @@ public class UserRepo {
 					.andThen(RoleRepo.persistUserRoles.apply(oldUser, dto.getRolesList()).apply(session))
 					.andThen(persistUser.apply(oldUser, dto));
 
-	protected static Function<DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistUserTree = dto -> session -> {
+	protected static Function<SecurityDTO.Account, Function<Session, Consumer<Session>>> persistUserTree = dto -> session -> {
 		User oldUser = QueryManager.getUserById(dto.getUserId(), session);
 		return oldUser == null ? CommandManager.saveUserTree.apply(makeNewUser.apply(dto).apply(session))
 				: persistOldUserTree.apply(oldUser, dto).apply(session);

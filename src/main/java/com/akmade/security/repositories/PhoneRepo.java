@@ -9,13 +9,12 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.hibernate.Session;
 
 import com.akmade.security.data.Phone;
 import com.akmade.security.data.PhoneType;
 import com.akmade.security.data.User;
-import com.akmade.security.dto.DataTransferObjects;
+import com.akmade.messaging.security.dto.SecurityDTO;
 
 import static com.akmade.security.Constants.HOME_PHONE;
 import static com.akmade.security.Constants.MOBILE_PHONE;
@@ -23,13 +22,16 @@ import static com.akmade.security.Constants.WORK_PHONE;
 
 
 public class PhoneRepo {
-	protected static Function<Collection<PhoneType>, Collection<String>> makeNewPhoneTypesDTOs =
+	protected static Function<Collection<PhoneType>, Collection<SecurityDTO.Type>> makeNewPhoneTypesDTOs =
 			at -> at
 					.stream()
-					.map(t -> new String(t.getType()))
+					.map(t -> SecurityDTO.Type.newBuilder()
+								.setType(t.getType())
+								.setDescription(t.getDescription())
+								.build())
 					.collect(Collectors.toList());
 			
-	protected static Function<Session, Collection<String>> getPhoneTypeDTOS = 
+	protected static Function<Session, Collection<SecurityDTO.Type>> getPhoneTypeDTOS = 
 			session -> makeNewPhoneTypesDTOs.apply(QueryManager.getPhoneTypes(session));
 
 	
@@ -41,11 +43,11 @@ public class PhoneRepo {
 							.findFirst()
 							.orElse(null);
 	
-	protected static Function<PhoneType, Function<ImmutablePair<String, String>, PhoneType>> mutatePhoneType =
+	protected static Function<PhoneType, Function<SecurityDTO.Type, PhoneType>> mutatePhoneType =
 			oldPhoneType ->
 					dto -> {
-							oldPhoneType.setType(dto.left);
-							oldPhoneType.setDescription(dto.right);
+							oldPhoneType.setType(dto.getType());
+							oldPhoneType.setDescription(dto.getDescription());
 							return oldPhoneType;
 					};
 						
@@ -54,21 +56,21 @@ public class PhoneRepo {
 				session ->
 					QueryManager.getPhoneTypeByType(type,session);
 		
-	protected static Function<ImmutablePair<String, String>, PhoneType> makePhoneType =
-			dto -> new PhoneType(dto.left, dto.right, null);
+	protected static Function<SecurityDTO.Type, PhoneType> makePhoneType =
+			dto -> new PhoneType(dto.getType(), dto.getDescription(), null);
 	
-	protected static Function<ImmutablePair<String, String>, Function<Session, Consumer<Session>>> persistPhoneType =
+	protected static Function<SecurityDTO.Type, Function<Session, Consumer<Session>>> persistPhoneType =
 			phoneTypeDTO ->
 				session -> {
-					PhoneType phoneType = getPhoneTypeByType.apply(phoneTypeDTO.left).apply(session);
+					PhoneType phoneType = getPhoneTypeByType.apply(phoneTypeDTO.getType()).apply(session);
 					return phoneType != null?
 						CommandManager.savePhoneType.apply(mutatePhoneType.apply(phoneType).apply(phoneTypeDTO)):
 						CommandManager.savePhoneType.apply(makePhoneType.apply(phoneTypeDTO));
 				};
 				
-	protected static Function<ImmutablePair<String, String>, Function<Session, Consumer<Session>>> deletePhoneType =
+	protected static Function<SecurityDTO.Type, Function<Session, Consumer<Session>>> deletePhoneType =
 			phoneTypeDTO ->
-				session -> CommandManager.deletePhoneType.apply(getPhoneTypeByType.apply(phoneTypeDTO.left).apply(session));
+				session -> CommandManager.deletePhoneType.apply(getPhoneTypeByType.apply(phoneTypeDTO.getType()).apply(session));
 	
 	protected static Function<User, Function<PhoneType, Function<String, Phone>>> makeNewPhone = user -> phoneType -> phoneDTO -> new Phone(
 			phoneType, user, phoneDTO, new Date(), new Date());
@@ -82,7 +84,7 @@ public class PhoneRepo {
 	protected static Function<User, Function<PhoneType, Function<Session, Phone>>> getPhoneByUserType = user -> type -> session -> QueryManager
 			.getPhoneByUserType(user, type, session);
 
-	protected static Function<User, Function<DataTransferObjects.Account, Function<Session, Collection<Phone>>>> makeNewPhones = user -> account -> session -> {
+	protected static Function<User, Function<SecurityDTO.Account, Function<Session, Collection<Phone>>>> makeNewPhones = user -> account -> session -> {
 		Set<Phone> phones = new HashSet<>();
 		phones.add(makeNewPhone.apply(user).apply(getPhoneTypeByType.apply(HOME_PHONE).apply(session))
 				.apply(account.getHomePhone()));
@@ -110,7 +112,7 @@ public class PhoneRepo {
 
 	protected static Function<User, Phone> getWorkPhone = user -> getMyPhone.apply(user.getPhones()).apply(WORK_PHONE);
 
-	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistHomePhone = (
+	protected static BiFunction<User, SecurityDTO.Account, Function<Session, Consumer<Session>>> persistHomePhone = (
 			user,
 			accountDTO) -> session -> accountDTO.getHomePhone() == null
 					? CommandManager.deletePhone.apply(getHomePhone.apply(user))
@@ -118,7 +120,7 @@ public class PhoneRepo {
 							.apply(getPhoneTypeByType.apply(HOME_PHONE).apply(session), accountDTO.getHomePhone())
 							.apply(session);
 
-	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistWorkPhone = (
+	protected static BiFunction<User, SecurityDTO.Account, Function<Session, Consumer<Session>>> persistWorkPhone = (
 			user,
 			accountDTO) -> session -> accountDTO.getWorkPhone() == null
 					? CommandManager.deletePhone.apply(getWorkPhone.apply(user))
@@ -126,7 +128,7 @@ public class PhoneRepo {
 							.apply(getPhoneTypeByType.apply(WORK_PHONE).apply(session), accountDTO.getHomePhone())
 							.apply(session);
 
-	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistMobilePhone = (
+	protected static BiFunction<User, SecurityDTO.Account, Function<Session, Consumer<Session>>> persistMobilePhone = (
 			user,
 			accountDTO) -> session -> accountDTO.getMobilePhone() == null
 					? CommandManager.deletePhone.apply(getMobilePhone.apply(user))
@@ -134,7 +136,7 @@ public class PhoneRepo {
 							.apply(getPhoneTypeByType.apply(MOBILE_PHONE).apply(session), accountDTO.getHomePhone())
 							.apply(session);
 
-	protected static BiFunction<User, DataTransferObjects.Account, Function<Session, Consumer<Session>>> persistPhones = (
+	protected static BiFunction<User, SecurityDTO.Account, Function<Session, Consumer<Session>>> persistPhones = (
 			user,
 			accountDTO) -> session -> persistHomePhone.apply(user, accountDTO).apply(session)
 					.andThen(persistWorkPhone.apply(user, accountDTO).apply(session))

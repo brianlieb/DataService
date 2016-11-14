@@ -2,9 +2,9 @@ package com.akmade.security;
 
 import java.util.function.Predicate;
 
-import com.akmade.security.dto.DataTransferObjects;
+import com.akmade.messaging.security.dto.SecurityDTO;
 
 public class SecurityBusiness {
-	public static Predicate<DataTransferObjects.Account> checkNewAccount = 
+	public static Predicate<SecurityDTO.Account> checkNewAccount = 
 			acct -> true;
 }

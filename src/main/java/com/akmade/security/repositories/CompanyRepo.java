@@ -16,22 +16,21 @@ import com.akmade.security.data.CompanyAddress;
 import com.akmade.security.data.CompanyPhone;
 import com.akmade.security.data.User;
 import com.akmade.security.data.UserCompany;
-import com.akmade.security.dto.DataTransferObjects;
+import com.akmade.messaging.security.dto.SecurityDTO;
 
 public class CompanyRepo {
-	
 	protected static Function<CompanyPhone, String> makeNewCompanyPhone = 
 			p -> p!=null?p.getPhone():null;
 
-	protected static Function<Company, DataTransferObjects.Company> makeNewCompanyDTO = 
-			company -> DataTransferObjects
+	protected static Function<Company, SecurityDTO.Company> makeNewCompanyDTO = 
+			company -> SecurityDTO
 							.Company.newBuilder()
 								.setCompany(company.getCompany())
 								.setAddress(AddressRepo.makeNewCompanyAddressDTO.apply(company.getCompanyAddress()))
 								.setPhone(makeNewCompanyPhone.apply(company.getCompanyPhone()))
 								.build();
 			
-	protected static Function<UserCompany, DataTransferObjects.Company> makeNewCompanyDTOByUserCompany =
+	protected static Function<UserCompany, SecurityDTO.Company> makeNewCompanyDTOByUserCompany =
 			userCompany -> makeNewCompanyDTO.apply(userCompany.getCompany());
 
 			
@@ -78,7 +77,7 @@ public class CompanyRepo {
 				};
 
 				
-	protected static Function<Company, Function<DataTransferObjects.Address, CompanyAddress>> makeCompanyAddress =
+	protected static Function<Company, Function<SecurityDTO.Address, CompanyAddress>> makeCompanyAddress =
 			company ->
 				dto -> new CompanyAddress(company, 
 											dto.getAddress1(), 
@@ -91,7 +90,7 @@ public class CompanyRepo {
 											new Date());
 				
 				
-	protected static Function<CompanyAddress, Function<DataTransferObjects.Address, CompanyAddress>> mutateCompanyAddress = 
+	protected static Function<CompanyAddress, Function<SecurityDTO.Address, CompanyAddress>> mutateCompanyAddress = 
 			oldAddress ->
 				dto -> {
 					oldAddress.setAddress1(dto.getAddress1());
@@ -108,7 +107,7 @@ public class CompanyRepo {
 			company ->
 				session -> QueryManager.getCompanyAddressByCompany(company, session);
 				
-	protected static BiFunction<Company, DataTransferObjects.Address, Function<Session, Consumer<Session>>> saveCompanyAddress =
+	protected static BiFunction<Company, SecurityDTO.Address, Function<Session, Consumer<Session>>> saveCompanyAddress =
 			(company, dto) ->
 				session -> {
 					CompanyAddress address = getCompanyAddressByCompany.apply(company).apply(session);
@@ -126,7 +125,7 @@ public class CompanyRepo {
 						CommandManager.doNothing;
 				};
 	
-	protected static BiFunction<Company, DataTransferObjects.Address, Function<Session, Consumer<Session>>> persistCompanyAddress =
+	protected static BiFunction<Company, SecurityDTO.Address, Function<Session, Consumer<Session>>> persistCompanyAddress =
 			(company, addressDTO) ->
 				session -> {
 						return addressDTO!=null?
@@ -136,7 +135,7 @@ public class CompanyRepo {
 				
 				
 				
-	protected static BiFunction<Company, DataTransferObjects.Account, Function<Session, UserCompany>> makeUserCompany =
+	protected static BiFunction<Company, SecurityDTO.Account, Function<Session, UserCompany>> makeUserCompany =
 			(company, account) -> 
 				session -> {
 						User user = UserRepo.getDBUser.apply(account).apply(session);
@@ -149,7 +148,7 @@ public class CompanyRepo {
 							null;
 				};
 					
-	protected static Function<UserCompany, Function<DataTransferObjects.Account, UserCompany>> mutateUserCompany =
+	protected static Function<UserCompany, Function<SecurityDTO.Account, UserCompany>> mutateUserCompany =
 		userCompany ->
 			account -> {
 					userCompany.setBilling(account.getBilling());
@@ -158,7 +157,7 @@ public class CompanyRepo {
 					return userCompany;
 			};
 
-	protected static BiFunction<Company, DataTransferObjects.Account, Function<Session, UserCompany>> getUserCompany =
+	protected static BiFunction<Company, SecurityDTO.Account, Function<Session, UserCompany>> getUserCompany =
 		(company, dto) ->
 			session -> {
 				UserCompany uCompany = QueryManager.getUserCompany(company.getCompanyId(), dto.getUserId(), session);
@@ -167,14 +166,14 @@ public class CompanyRepo {
 						makeUserCompany.apply(company, dto).apply(session);
 			};
 			
-	protected static Function<DataTransferObjects.Account, Function<Session, UserCompany>> getUserCompanyForAccount =
+	protected static Function<SecurityDTO.Account, Function<Session, UserCompany>> getUserCompanyForAccount =
 			(accountDTO) ->
 				session -> 	{
 					Company oldCompany = QueryManager.getCompanyById(accountDTO.getCompany().getCompanyId(), session);
 					return getUserCompany.apply(oldCompany, accountDTO).apply(session);
 				};
 					
-	protected static BiFunction<Company, Collection<DataTransferObjects.Account>, Function<Session, Collection<UserCompany>>> makeUserCompanies =
+	protected static BiFunction<Company, Collection<SecurityDTO.Account>, Function<Session, Collection<UserCompany>>> makeUserCompanies =
 			(company, accounts) -> 
 					session -> accounts
 									.stream()
@@ -182,7 +181,7 @@ public class CompanyRepo {
 									.collect(Collectors.toSet());
 					
 				
-	protected static Function<DataTransferObjects.Company, Function<Session, Company>> makeCompany =
+	protected static Function<SecurityDTO.Company, Function<Session, Company>> makeCompany =
 			dto -> 
 				session -> 
 				{ 
@@ -222,7 +221,7 @@ public class CompanyRepo {
 					.collect(Collectors.toList());
 			};
 			
-	protected static BiFunction<Company, Collection<DataTransferObjects.Account>, Function<Session, Consumer<Session>>> persistUserCompanies =
+	protected static BiFunction<Company, Collection<SecurityDTO.Account>, Function<Session, Consumer<Session>>> persistUserCompanies =
 			(company, accounts) ->
 				session -> {
 					Collection<UserCompany> newUserCompanies = makeUserCompanies.apply(company, accounts).apply(session);
@@ -230,14 +229,14 @@ public class CompanyRepo {
 								.andThen(CommandManager.saveUserCompanies.apply(newUserCompanies));
 				};
 			
-	protected static BiFunction<Company, DataTransferObjects.Company, Consumer<Session>> persistCompany =
+	protected static BiFunction<Company, SecurityDTO.Company, Consumer<Session>> persistCompany =
 		(oldCompany, dto) -> {
 			oldCompany.setCompany(dto.getCompany());
 			oldCompany.setLastmodifiedDate(new Date());
 			return CommandManager.saveCompany.apply(oldCompany);
 		};	
 						
-	protected static BiFunction<Company, DataTransferObjects.Company, Function<Session, Consumer<Session>>> persistOldCompanyTree = 
+	protected static BiFunction<Company, SecurityDTO.Company, Function<Session, Consumer<Session>>> persistOldCompanyTree = 
 			(oldCompany, dto) -> 
 				session -> persistUserCompanies.apply(oldCompany, dto.getUsersList()).apply(session)
 							.andThen(persistCompanyPhone.apply(oldCompany, dto.getPhone()).apply(session))
@@ -245,7 +244,7 @@ public class CompanyRepo {
 							.andThen(persistUserCompanies.apply(oldCompany, dto.getUsersList()).apply(session))
 							.andThen(persistCompany.apply(oldCompany, dto));
 					
-	protected static Function<DataTransferObjects.Company, Function<Session, Consumer<Session>>> persistCompanyTree =
+	protected static Function<SecurityDTO.Company, Function<Session, Consumer<Session>>> persistCompanyTree =
 			dto -> 
 				session -> 
 				{
