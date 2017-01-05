@@ -22,26 +22,26 @@ public class SessionRepo {
 	public SessionRepo () {
 	}
 	
-	protected Session createSession(DataSource ds) {
+	protected static Session createSession(DataSource ds) {
 		Session session = HibernateSessionFactory.getInstance().createSession(ds);
 		session.setFlushMode(FlushMode.MANUAL);
 		session.beginTransaction();
 		return session;
 	}
 
-	protected void rollbackAndClose(Session session){
+	protected static void rollbackAndClose(Session session){
 		rollback(session);
 		session.clear();
 		session.close();
 	}
 	
-	protected void rollback(Session session) {
+	protected static void rollback(Session session) {
 		if(TransactionStatus.ACTIVE.equals(session.getTransaction().getStatus())){
 			session.getTransaction().rollback();			
 		}
 	}
 	
-	protected void commit(Session session) {
+	protected static void commit(Session session) {
 		if (session != null && session.isOpen()) {
 			if(TransactionStatus.ACTIVE.equals(session.getTransaction().getStatus())){
 				session.flush();
@@ -50,7 +50,7 @@ public class SessionRepo {
 		}
 	}
 	
-	protected void commitAndClose(Session session){
+	protected static void commitAndClose(Session session){
 		if (session != null && session.isOpen()) {
 			commit(session);
 			session.clear();
@@ -58,7 +58,7 @@ public class SessionRepo {
 		}
 	}
 		
-	protected void endSession(Session session){
+	protected static void endSession(Session session){
 		commitAndClose(session);
 	}
 	
@@ -68,7 +68,7 @@ public class SessionRepo {
 			session.beginTransaction();
 	}
 
-	protected UnrecoverableException logAndThrowError(String msg) throws UnrecoverableException {
+	protected static UnrecoverableException logAndThrowError(String msg) throws UnrecoverableException {
 		logger.error(msg);
 		return new UnrecoverableException(msg);
 	}
@@ -87,10 +87,40 @@ public class SessionRepo {
 	        Objects.requireNonNull(after);
 	        return (session) -> { accept(session); after.accept(session); };
 	    }
+	    
+		default void run(DataSource ds) {
+			Session session = createSession(ds);
+			logger.debug("Saving!");
+			try {
+				this.accept(session);
+			} catch (Exception e) {
+				rollbackAndClose(session);
+				throw logAndThrowError("Error running the transaction. " + e.getMessage());
+			} finally {
+				logger.debug("saved");
+				endSession(session);
+			}			
+		}
 	}
 	
 	@FunctionalInterface
-	public interface Qry extends Function<Session, Criteria>{
+	public interface CritQuery extends Function<Session, Criteria>{
+	}
+	
+	@FunctionalInterface
+	public interface Qry<T> extends Function<Session, T>{
+		default T run(DataSource ds) {
+			Session session = createSession(ds);
+			logger.debug("Running query."); 
+			try {
+				return this.apply(session);
+			} catch (Exception e) {
+				rollbackAndClose(session);
+				throw logAndThrowError("Error running the query. " + e.getMessage());
+			} finally {
+				endSession(session);
+			}
+		}
 	}
 	
 }

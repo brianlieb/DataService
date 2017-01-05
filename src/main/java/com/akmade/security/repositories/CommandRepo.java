@@ -1,7 +1,5 @@
 package com.akmade.security.repositories;
 
-import org.hibernate.Session;
-
 import com.akmade.security.data.HibernateSessionFactory.DataSource;
 import com.akmade.messaging.security.dto.SecurityDTO;
 
@@ -17,58 +15,44 @@ public class CommandRepo extends SessionRepo {
 		this.dataSource = ds;
 	}
 	
-	private void runCommand(Txn txn) {
-		Session session = createSession(dataSource);
-		logger.debug("Saving!");
-		try {
-			txn.accept(session);
-		} catch (Exception e) {
-			rollbackAndClose(session);
-			throw logAndThrowError("Error running the transaction. " + e.getMessage());
-		} finally {
-			logger.debug("saved");
-			endSession(session);
-		}			
-	}
-	
 	public void saveAddressType(SecurityDTO.Type dto) {
 		logger.info("Making Address Type for: " + dto.getType() + " " + dto.getDescription());
- 		runCommand(AddressRepo.persistAddressType.apply(dto));
+ 		AddressRepo.persistAddressType.apply(dto).run(dataSource);
 	}
 	
 	public void deleteAddressType(SecurityDTO.Type dto) {
 		logger.info("Deleting Address Type for: " + dto.getType() + " " + dto.getDescription());
-		runCommand(AddressRepo.deleteAddressType.apply(dto));
+		AddressRepo.deleteAddressType.apply(dto).run(dataSource);
 	}
 					
 	public void saveRoleType(SecurityDTO.Type dto) {
 		logger.info("Making Role Type for: " + dto.getType() + " " + dto.getDescription());
- 		runCommand(RoleRepo.persistRoleType.apply(dto));
+ 		RoleRepo.persistRoleType.apply(dto).run(dataSource);
 	}
 	
 	public void deleteRoleType(SecurityDTO.Type dto) {
 		logger.info("Deleting Role Type for: " + dto.getType() + " " + dto.getDescription());
-		runCommand(RoleRepo.deleteRoleType.apply(dto));
+		RoleRepo.deleteRoleType.apply(dto).run(dataSource);
 	}
 
 	public void savePhoneType(SecurityDTO.Type dto) {
 		logger.info("Making Phone Type for: " + dto.getType() + " " + dto.getDescription());
-		runCommand(PhoneRepo.persistPhoneType.apply(dto));
+		PhoneRepo.persistPhoneType.apply(dto).run(dataSource);
 	}
 	
 	public void deletePhoneType(SecurityDTO.Type dto) {
 		logger.info("Deleting Phone Type for: " + dto.getType() + " " + dto.getDescription());
-		runCommand(PhoneRepo.deletePhoneType.apply(dto));
+		PhoneRepo.deletePhoneType.apply(dto).run(dataSource);
 	}
 
 	public void saveCompany(SecurityDTO.Company companyDTO) {
 		logger.info("Saving the company: " + companyDTO.getCompany() + ".");
-		runCommand(CompanyRepo.persistCompanyTree.apply(companyDTO));
+		CompanyRepo.persistCompanyTree.apply(companyDTO).run(dataSource);
 	}
 	
 	public void saveUser(SecurityDTO.Account accountDTO) {
 		logger.info("Saving the user: " + accountDTO.getUserName() + ".");
-		runCommand(UserRepo.persistUserTree.apply(accountDTO));
+		UserRepo.persistUserTree.apply(accountDTO).run(dataSource);
 	}
 
 

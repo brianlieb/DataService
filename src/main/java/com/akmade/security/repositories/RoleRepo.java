@@ -7,35 +7,34 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.hibernate.Session;
-
 import com.akmade.security.data.Role;
 import com.akmade.security.data.RoleType;
 import com.akmade.security.data.User;
 import com.akmade.security.data.UserRole;
 import com.akmade.security.data.UserRoleId;
+import com.akmade.security.repositories.SessionRepo.Qry;
 import com.akmade.security.repositories.SessionRepo.Txn;
 import com.akmade.messaging.security.dto.SecurityDTO;
 
 public class RoleRepo {
-	protected static Function<SecurityDTO.Role, Function<Session, Role>> getDBRole =
+	protected static Function<SecurityDTO.Role, Qry<Role>> getDBRole =
 			dto ->
 				session ->  QueryManager.getRole(dto.getRole(), session);
 				
-	protected static BiFunction<User, SecurityDTO.Role, Function<Session, UserRole>> makeUserRole = (user,
+	protected static BiFunction<User, SecurityDTO.Role, Qry<UserRole>> makeUserRole = (user,
 			dto) -> session -> {
 				Role role = getDBRole.apply(dto).apply(session);
 				return role != null ? new UserRole(new UserRoleId(user.getUserId(), role.getRoleId()), role, user)
 						: null;
 			};
 
-	protected static BiFunction<User, SecurityDTO.Role, Function<Session, UserRole>> getUserRole = (user,
+	protected static BiFunction<User, SecurityDTO.Role, Qry<UserRole>> getUserRole = (user,
 			dto) -> session -> {
 				UserRole uRole = QueryManager.getUserRole(user.getUserId(), dto.getRole(), session);
 				return uRole == null ? makeUserRole.apply(user, dto).apply(session) : null;
 			};
 
-	protected static BiFunction<User, Collection<SecurityDTO.Role>, Function<Session, Collection<UserRole>>> makeUserRoles = (
+	protected static BiFunction<User, Collection<SecurityDTO.Role>, Qry<Collection<UserRole>>> makeUserRoles = (
 			user, roles) -> session -> roles.stream().map(role -> getUserRole.apply(user, role).apply(session))
 					.collect(Collectors.toSet());
 			
@@ -48,7 +47,7 @@ public class RoleRepo {
 								.build())
 					.collect(Collectors.toList());
 			
-	protected static Function<Session, Collection<SecurityDTO.Type>> getRoleTypeDTOS = 
+	protected static Qry<Collection<SecurityDTO.Type>> getRoleTypeDTOS = 
 			session -> makeNewRoleTypesDTOs.apply(QueryManager.getRoleTypes(session));
 				
 	
@@ -77,7 +76,7 @@ public class RoleRepo {
 	protected static Function<SecurityDTO.Type, RoleType> makeRoleType =
 			dto -> new RoleType(dto.getType(), dto.getDescription(), null);
 			
-	protected static Function<String, Function<Session, RoleType>> getRoleTypeByType =
+	protected static Function<String, Qry<RoleType>> getRoleTypeByType =
 			type ->
 				session ->
 					QueryManager.getRoleTypeByType(type,session);

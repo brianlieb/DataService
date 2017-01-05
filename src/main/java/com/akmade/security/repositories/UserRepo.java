@@ -13,16 +13,15 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.hibernate.Session;
-
 import com.akmade.security.data.User;
 import com.akmade.security.data.UserCompany;
+import com.akmade.security.repositories.SessionRepo.Qry;
 import com.akmade.security.repositories.SessionRepo.Txn;
 import com.akmade.messaging.security.dto.SecurityDTO;
 
 public class UserRepo {
 	
-	protected static Function<SecurityDTO.Account, Function<Session, User>> getDBUser = dto -> session -> QueryManager
+	protected static Function<SecurityDTO.Account, Qry<User>> getDBUser = dto -> session -> QueryManager
 			.getUserById(dto.getUserId(), session);
 	
 	protected static Predicate<User> isPrimaryContact =
@@ -59,18 +58,18 @@ public class UserRepo {
 						.map(u -> makeAccountDTO.apply(u))
 						.collect(Collectors.toList());
 			
-	protected static Function<Session, Collection<SecurityDTO.Account>> getAccountDTOs =
+	protected static Qry<Collection<SecurityDTO.Account>> getAccountDTOs =
 			session -> makeAccountDTOs.apply(QueryManager.getUsers(session));
 			
-	protected static Function<String, Function<Session, SecurityDTO.Account>> getAccountDTOByUsername =
+	protected static Function<String, Qry<SecurityDTO.Account>> getAccountDTOByUsername =
 			username ->
 				session -> makeAccountDTO.apply(QueryManager.getUserByUsername(username, session));
 	
-	protected static Function<Integer, Function<Session, SecurityDTO.Account>> getAccountDTOById =
+	protected static Function<Integer, Qry<SecurityDTO.Account>> getAccountDTOById =
 			userId ->
 				session -> makeAccountDTO.apply(QueryManager.getUserById(userId, session));
 			
-	protected static Function<SecurityDTO.Account, Function<Session, User>> makeNewUser = dto -> session -> {
+	protected static Function<SecurityDTO.Account, Qry<User>> makeNewUser = dto -> session -> {
 		User newUser = new User(dto.getUserName(), null, // TODO password?
 				dto.getEmail(), dto.getFirstName(), dto.getMiddleInitial().charAt(0), dto.getLastName(), false,
 				new Date(), new Date(), null, null, null,
@@ -86,7 +85,7 @@ public class UserRepo {
 			newUserCompany) -> CompanyRepo.isSameUserCompany.test(oldUserCompany, newUserCompany)
 					? CommandManager.deleteUserCompany.apply(oldUserCompany) : CommandManager.doNothing;
 
-	protected static BiFunction<User, SecurityDTO.Account, Function<Session, UserCompany>> makeUserCompany = 
+	protected static BiFunction<User, SecurityDTO.Account, Qry<UserCompany>> makeUserCompany = 
 			(user, accountDTO) -> session -> CompanyRepo.getUserCompanyForAccount.apply(accountDTO).apply(session);
 
 	protected static BiFunction<User, SecurityDTO.Account, Txn> persistUserCompany = (

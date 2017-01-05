@@ -7,7 +7,6 @@ import static com.akmade.messaging.Utility.invalidateMessage;
 
 import java.util.Collection;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.akmade.messaging.api.Messenger.MessageAction;

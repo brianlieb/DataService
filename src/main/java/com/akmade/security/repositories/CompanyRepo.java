@@ -8,13 +8,12 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.hibernate.Session;
-
 import com.akmade.security.data.Company;
 import com.akmade.security.data.CompanyAddress;
 import com.akmade.security.data.CompanyPhone;
 import com.akmade.security.data.User;
 import com.akmade.security.data.UserCompany;
+import com.akmade.security.repositories.SessionRepo.Qry;
 import com.akmade.security.repositories.SessionRepo.Txn;
 import com.akmade.messaging.security.dto.SecurityDTO;
 
@@ -46,7 +45,7 @@ public class CompanyRepo {
 					return oldPhone;
 				};
 	
-	protected static Function<Company, Function<Session, CompanyPhone>> getCompanyPhoneByCompany =
+	protected static Function<Company, Qry<CompanyPhone>> getCompanyPhoneByCompany =
 			company ->
 				session -> QueryManager.getCompanyPhoneByCompany(company, session);
 				
@@ -106,7 +105,7 @@ public class CompanyRepo {
 					return oldAddress;
 				};
 				
-	protected static Function<Company, Function<Session, CompanyAddress>> getCompanyAddressByCompany =
+	protected static Function<Company, Qry<CompanyAddress>> getCompanyAddressByCompany =
 			company ->
 				session -> QueryManager.getCompanyAddressByCompany(company, session);
 				
@@ -141,7 +140,7 @@ public class CompanyRepo {
 				
 				
 				
-	protected static BiFunction<Company, SecurityDTO.Account, Function<Session, UserCompany>> makeUserCompany =
+	protected static BiFunction<Company, SecurityDTO.Account, Qry<UserCompany>> makeUserCompany =
 			(company, account) -> 
 				session -> {
 						User user = UserRepo.getDBUser.apply(account).apply(session);
@@ -163,7 +162,7 @@ public class CompanyRepo {
 					return userCompany;
 			};
 
-	protected static BiFunction<Company, SecurityDTO.Account, Function<Session, UserCompany>> getUserCompany =
+	protected static BiFunction<Company, SecurityDTO.Account, Qry<UserCompany>> getUserCompany =
 		(company, dto) ->
 			session -> {
 				UserCompany uCompany = QueryManager.getUserCompany(company.getCompanyId(), dto.getUserId(), session);
@@ -172,14 +171,14 @@ public class CompanyRepo {
 						makeUserCompany.apply(company, dto).apply(session);
 			};
 			
-	protected static Function<SecurityDTO.Account, Function<Session, UserCompany>> getUserCompanyForAccount =
+	protected static Function<SecurityDTO.Account, Qry<UserCompany>> getUserCompanyForAccount =
 			(accountDTO) ->
 				session -> 	{
 					Company oldCompany = QueryManager.getCompanyById(accountDTO.getCompany().getCompanyId(), session);
 					return getUserCompany.apply(oldCompany, accountDTO).apply(session);
 				};
 					
-	protected static BiFunction<Company, Collection<SecurityDTO.Account>, Function<Session, Collection<UserCompany>>> makeUserCompanies =
+	protected static BiFunction<Company, Collection<SecurityDTO.Account>, Qry<Collection<UserCompany>>> makeUserCompanies =
 			(company, accounts) -> 
 					session -> accounts
 									.stream()
@@ -187,7 +186,7 @@ public class CompanyRepo {
 									.collect(Collectors.toSet());
 					
 				
-	protected static Function<SecurityDTO.Company, Function<Session, Company>> makeCompany =
+	protected static Function<SecurityDTO.Company, Qry<Company>> makeCompany =
 			dto -> 
 				session -> 
 				{ 

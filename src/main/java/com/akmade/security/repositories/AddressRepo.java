@@ -8,8 +8,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.hibernate.Session;
-
 import static com.akmade.security.Constants.MAILING_ADDRESS;
 import static com.akmade.security.Constants.SHIPPING_ADDRESS;
 
@@ -18,6 +16,7 @@ import com.akmade.security.data.Address;
 import com.akmade.security.data.AddressType;
 import com.akmade.security.data.CompanyAddress;
 import com.akmade.security.data.User;
+import com.akmade.security.repositories.SessionRepo.Qry;
 import com.akmade.security.repositories.SessionRepo.Txn;
 import com.akmade.messaging.security.dto.SecurityDTO;
 
@@ -32,7 +31,7 @@ public class AddressRepo {
 								.build())
 					.collect(Collectors.toList());
 			
-	protected static Function<Session, Collection<SecurityDTO.Type>> getAddressTypeDTOs =
+	protected static Qry<Collection<SecurityDTO.Type>> getAddressTypeDTOs =
 			session -> 	makeNewAddressTypesDTOs.apply(QueryManager.getAddressTypes(session));
 
 	
@@ -79,7 +78,7 @@ public class AddressRepo {
 								return oldAddressType;
 					};
 					
-	protected static Function<String, Function<Session, AddressType>> getAddressTypeByType =
+	protected static Function<String, Qry<AddressType>> getAddressTypeByType =
 			type ->
 				session ->
 					QueryManager.getAddressTypeByType(type,session);
@@ -125,12 +124,12 @@ public class AddressRepo {
 						return oldAddress;
 				};
 
-	protected static Function<User, Function<AddressType, Function<Session, Address>>> getAddressByUserType = 
+	protected static Function<User, Function<AddressType, Qry<Address>>> getAddressByUserType = 
 			user -> 
 				type -> 
 					session -> QueryManager.getAddressByUserType(user, type, session);
 
-	protected static Function<User, Function<SecurityDTO.Account, Function<Session, Collection<Address>>>> makeNewAddresses = 
+	protected static Function<User, Function<SecurityDTO.Account, Qry<Collection<Address>>>> makeNewAddresses = 
 		user -> 
 			account -> 
 				session -> {

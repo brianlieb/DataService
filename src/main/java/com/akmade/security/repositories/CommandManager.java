@@ -5,8 +5,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import org.hibernate.Session;
-
 import com.akmade.security.data.Address;
 import com.akmade.security.data.AddressType;
 import com.akmade.security.data.Company;
@@ -18,6 +16,7 @@ import com.akmade.security.data.RoleType;
 import com.akmade.security.data.User;
 import com.akmade.security.data.UserCompany;
 import com.akmade.security.data.UserRole;
+import com.akmade.security.repositories.SessionRepo.Qry;
 import com.akmade.security.repositories.SessionRepo.Txn;
 
 public class CommandManager extends DataSession {
@@ -25,7 +24,7 @@ public class CommandManager extends DataSession {
 				session -> {};
 			
 			
-	private static Function<Session, Predicate<Object>> hasId =
+	private static Qry<Predicate<Object>> hasId =
 			s -> 
 				o -> {
 					if (s.getIdentifier(o)!=null)

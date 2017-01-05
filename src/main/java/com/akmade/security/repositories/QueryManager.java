@@ -17,50 +17,50 @@ import com.akmade.security.data.RoleType;
 import com.akmade.security.data.User;
 import com.akmade.security.data.UserCompany;
 import com.akmade.security.data.UserRole;
-import com.akmade.security.repositories.SessionRepo.Qry;
+import com.akmade.security.repositories.SessionRepo.CritQuery;
 
 public class QueryManager extends DataSession {
 	
-	private static Qry phoneTypeQuery = 
+	private static CritQuery phoneTypeQuery = 
 		session -> session.createCriteria(PhoneType.class, "phoneType");
 	
-	private static Qry addressTypeQuery =
+	private static CritQuery addressTypeQuery =
 			session -> session.createCriteria(AddressType.class, "addressType");
 
-	private static Qry roleTypeQuery = 
+	private static CritQuery roleTypeQuery = 
 			session -> session.createCriteria(RoleType.class, "roleType");
 			
-	private static Qry phoneQuery = 
+	private static CritQuery phoneQuery = 
 			session -> session.createCriteria(Phone.class, "phone")
 											.createAlias("phoneType", "phoneType")
 											.createAlias("user", "user")
 											.setResultTransformer(Criteria.DISTINCT_ROOT_ENTITY);
 	
-	private static Qry addressQuery = 
+	private static CritQuery addressQuery = 
 			session -> session.createCriteria(Address.class, "address")
 												.createAlias("addressType", "addressType")
 												.createAlias("user", "user")
 												.setResultTransformer(Criteria.DISTINCT_ROOT_ENTITY);
 
-	private static Qry userQuery = 
+	private static CritQuery userQuery = 
 			session -> session.createCriteria(User.class, "user");
 			
-	private static Qry roleQuery = 
+	private static CritQuery roleQuery = 
 			session -> session.createCriteria(Role.class, "role");
 							
-	private static Qry userCompanyQuery = 
+	private static CritQuery userCompanyQuery = 
 			session -> session.createCriteria(UserCompany.class, "userCompany")
 								.createAlias("user", "user")
 								.createAlias("company", "company")
 								.setResultTransformer(Criteria.DISTINCT_ROOT_ENTITY);
 			
-	private static Qry userRoleQuery = 
+	private static CritQuery userRoleQuery = 
 			session -> session.createCriteria(UserRole.class, "userRole")
 								.createAlias("user", "user")
 								.createAlias("role", "role")
 								.setResultTransformer(Criteria.DISTINCT_ROOT_ENTITY);
 
-	private static Qry companyQuery =
+	private static CritQuery companyQuery =
 			session -> session.createCriteria(Company.class, "company")
 												.createAlias("companyAddresses", "addresses")
 												.createAlias("companyPhones", "phones")

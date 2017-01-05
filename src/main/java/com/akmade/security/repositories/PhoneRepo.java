@@ -8,11 +8,10 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.hibernate.Session;
-
 import com.akmade.security.data.Phone;
 import com.akmade.security.data.PhoneType;
 import com.akmade.security.data.User;
+import com.akmade.security.repositories.SessionRepo.Qry;
 import com.akmade.security.repositories.SessionRepo.Txn;
 import com.akmade.messaging.security.dto.SecurityDTO;
 
@@ -31,7 +30,7 @@ public class PhoneRepo {
 								.build())
 					.collect(Collectors.toList());
 			
-	protected static Function<Session, Collection<SecurityDTO.Type>> getPhoneTypeDTOS = 
+	protected static Qry<Collection<SecurityDTO.Type>> getPhoneTypeDTOS = 
 			session -> makeNewPhoneTypesDTOs.apply(QueryManager.getPhoneTypes(session));
 
 	
@@ -51,7 +50,7 @@ public class PhoneRepo {
 							return oldPhoneType;
 					};
 						
-	protected static Function<String, Function<Session, PhoneType>> getPhoneTypeByType =
+	protected static Function<String, Qry<PhoneType>> getPhoneTypeByType =
 			type ->
 				session ->
 					QueryManager.getPhoneTypeByType(type,session);
@@ -82,10 +81,10 @@ public class PhoneRepo {
 		return oldPhone;
 	};
 
-	protected static Function<User, Function<PhoneType, Function<Session, Phone>>> getPhoneByUserType = user -> type -> session -> QueryManager
+	protected static Function<User, Function<PhoneType, Qry<Phone>>> getPhoneByUserType = user -> type -> session -> QueryManager
 			.getPhoneByUserType(user, type, session);
 
-	protected static Function<User, Function<SecurityDTO.Account, Function<Session, Collection<Phone>>>> makeNewPhones = user -> account -> session -> {
+	protected static Function<User, Function<SecurityDTO.Account, Qry<Collection<Phone>>>> makeNewPhones = user -> account -> session -> {
 		Set<Phone> phones = new HashSet<>();
 		phones.add(makeNewPhone.apply(user).apply(getPhoneTypeByType.apply(HOME_PHONE).apply(session))
 				.apply(account.getHomePhone()));
