@@ -82,17 +82,21 @@ public class SessionRepo {
 	
 	
 	@FunctionalInterface
-	public interface Txn extends Consumer<Session>{
-	    default Txn andThen(Consumer<? super Session> after) {
+	public interface Txn {
+		
+	    void execute(Session s);
+		
+		
+	    default Txn andThen(Txn after) {
 	        Objects.requireNonNull(after);
-	        return (session) -> { accept(session); after.accept(session); };
+	        return (session) -> { execute(session); after.execute(session); };
 	    }
 	    
 		default void run(DataSource ds) {
 			Session session = createSession(ds);
 			logger.debug("Saving!");
 			try {
-				this.accept(session);
+				this.execute(session);
 			} catch (Exception e) {
 				rollbackAndClose(session);
 				throw logAndThrowError("Error running the transaction. " + e.getMessage());

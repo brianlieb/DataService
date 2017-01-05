@@ -88,10 +88,14 @@ public class RoleRepo {
 	protected static Function<Collection<UserRole>, Predicate<UserRole>> containsUserRole = userRoles -> ur -> userRoles
 			.stream().anyMatch(our -> isSameUserRole.test(our, ur));
 
-	protected static BiFunction<Collection<UserRole>, Collection<UserRole>, Txn> deleteUserRoles = (
-			oldUserRoles, newUserRoles) -> session -> {
-				oldUserRoles.stream().filter(ur -> containsUserRole.apply(newUserRoles).test(ur) != true)
-						.map(ur -> CommandManager.deleteUserRole.apply(ur)).collect(Collectors.toList());
+	protected static BiFunction<Collection<UserRole>, Collection<UserRole>, Txn> deleteUserRoles = 
+			(oldUserRoles, newUserRoles) -> 
+				session -> {
+				oldUserRoles.stream()
+							.filter(ur -> containsUserRole.apply(newUserRoles).test(ur) != true)
+							.map(ur -> CommandManager.deleteUserRole.apply(ur))
+							.reduce(CommandManager.doNothing, Txn::andThen)
+							.execute(session);
 			};
 			
 	protected static BiFunction<User, Collection<SecurityDTO.Role>, Txn> persistUserRoles = 
@@ -99,7 +103,7 @@ public class RoleRepo {
 			session -> {
 				Collection<UserRole> newUserRoles = RoleRepo.makeUserRoles.apply(user, roles).apply(session);
 				deleteUserRoles.apply(user.getUserRoles(), newUserRoles)
-						.andThen(CommandManager.saveUserRoles.apply(newUserRoles)).accept(session);;
+						.andThen(CommandManager.saveUserRoles.apply(newUserRoles)).execute(session);
 			};
 			
 	protected static Function<SecurityDTO.Type, Txn> persistRoleType =
@@ -107,14 +111,14 @@ public class RoleRepo {
 				session -> {
 					RoleType roleType =	getRoleTypeByType.apply(roleTypeDTO.getType()).apply(session);
 					if (roleType!=null)
-						CommandManager.saveRoleType.apply(mutateRoleType.apply(roleType).apply(roleTypeDTO)).accept(session);
+						CommandManager.saveRoleType.apply(mutateRoleType.apply(roleType).apply(roleTypeDTO)).execute(session);
 					else
-						CommandManager.saveRoleType.apply(makeRoleType.apply(roleTypeDTO));
+						CommandManager.saveRoleType.apply(makeRoleType.apply(roleTypeDTO)).execute(session);;
 				};
 
 	protected static Function<SecurityDTO.Type, Txn> deleteRoleType =
 			roleTypeDTO ->
-				session -> CommandManager.deleteRoleType.apply(getRoleTypeByType.apply(roleTypeDTO.getType()).apply(session)).accept(session);
+				session -> CommandManager.deleteRoleType.apply(getRoleTypeByType.apply(roleTypeDTO.getType()).apply(session)).execute(session);;
 
 
 }

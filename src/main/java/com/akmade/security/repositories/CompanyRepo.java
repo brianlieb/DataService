@@ -54,9 +54,9 @@ public class CompanyRepo {
 			session -> {
 				CompanyPhone phone = getCompanyPhoneByCompany.apply(company).apply(session);
 				if (phone!=null) 
-					CommandManager.saveCompanyPhone.apply(mutateCompanyPhone.apply(phone).apply(phoneDTO));
+					CommandManager.saveCompanyPhone.apply(mutateCompanyPhone.apply(phone).apply(phoneDTO)).execute(session);
 				else
-					CommandManager.saveCompanyPhone.apply(makeCompanyPhone.apply(company).apply(phoneDTO));
+					CommandManager.saveCompanyPhone.apply(makeCompanyPhone.apply(company).apply(phoneDTO)).execute(session);
 		};
 		
 	protected static Function<Company, Txn> deleteCompanyPhone = 
@@ -64,18 +64,18 @@ public class CompanyRepo {
 			session -> {
 				CompanyPhone phone = getCompanyPhoneByCompany.apply(company).apply(session);
 				if (phone!=null)
-					CommandManager.deleteCompanyPhone.apply(phone).accept(session);
+					CommandManager.deleteCompanyPhone.apply(phone).execute(session);
 				else 
-					CommandManager.doNothing.accept(session);
+					CommandManager.doNothing.execute(session);
 			};
 				
 	protected static BiFunction<Company, String, Txn> persistCompanyPhone =
 			(company, phoneDTO) ->
 				session -> {
 						if (phoneDTO!=null)
-							saveCompanyPhone.apply(company, phoneDTO).accept(session);
+							saveCompanyPhone.apply(company, phoneDTO).execute(session);
 						else
-							deleteCompanyPhone.apply(company).accept(session);
+							deleteCompanyPhone.apply(company).execute(session);
 				};
 
 				
@@ -114,9 +114,9 @@ public class CompanyRepo {
 				session -> {
 					CompanyAddress address = getCompanyAddressByCompany.apply(company).apply(session);
 					if (address!=null)
-						CommandManager.saveCompanyAddress.apply(mutateCompanyAddress.apply(address).apply(dto)).accept(session);
+						CommandManager.saveCompanyAddress.apply(mutateCompanyAddress.apply(address).apply(dto)).execute(session);
 					else
-						CommandManager.saveCompanyAddress.apply(makeCompanyAddress.apply(company).apply(dto)).accept(session);;
+						CommandManager.saveCompanyAddress.apply(makeCompanyAddress.apply(company).apply(dto)).execute(session);
 			};
 			
 	protected static Function<Company, Txn> deleteCompanyAddress = 
@@ -124,18 +124,18 @@ public class CompanyRepo {
 			session ->{
 				CompanyAddress address = getCompanyAddressByCompany.apply(company).apply(session);
 				if (address!=null)
-						CommandManager.deleteCompanyAddress.apply(address).accept(session);
+						CommandManager.deleteCompanyAddress.apply(address).execute(session);
 				else 
-						CommandManager.doNothing.accept(session);
+						CommandManager.doNothing.execute(session);
 				};
 	
 	protected static BiFunction<Company, SecurityDTO.Address, Txn> persistCompanyAddress =
 			(company, addressDTO) ->
 				session -> {
 						if (addressDTO!=null)
-							saveCompanyAddress.apply(company, addressDTO).accept(session);
+							saveCompanyAddress.apply(company, addressDTO).execute(session);
 						else
-							deleteCompanyAddress.apply(company).accept(session);
+							deleteCompanyAddress.apply(company).execute(session);
 				};
 				
 				
@@ -223,7 +223,8 @@ public class CompanyRepo {
 					.stream()
 					.filter(uc -> containsUserCompany.apply(newUsers).test(uc)!=true)
 					.map(uc -> CommandManager.deleteUserCompany.apply(uc))
-					.collect(Collectors.toList());
+					.reduce(CommandManager.doNothing,Txn::andThen)
+					.execute(session);
 			};
 			
 	protected static BiFunction<Company, Collection<SecurityDTO.Account>, Txn> persistUserCompanies =
@@ -231,14 +232,15 @@ public class CompanyRepo {
 				session -> {
 					Collection<UserCompany> newUserCompanies = makeUserCompanies.apply(company, accounts).apply(session);
 					deleteUserCompanies.apply(company.getUserCompanies(), newUserCompanies)
-										.andThen(CommandManager.saveUserCompanies.apply(newUserCompanies));
+										.andThen(CommandManager.saveUserCompanies.apply(newUserCompanies)).execute(session);
 				};
 			
 	protected static BiFunction<Company, SecurityDTO.Company, Txn> persistCompany =
-		(oldCompany, dto) -> {
+		(oldCompany, dto) -> 
+			session -> {
 			oldCompany.setCompany(dto.getCompany());
 			oldCompany.setLastmodifiedDate(new Date());
-			return CommandManager.saveCompany.apply(oldCompany);
+			CommandManager.saveCompany.apply(oldCompany).execute(session);
 		};	
 						
 	protected static BiFunction<Company, SecurityDTO.Company, Txn> persistOldCompanyTree = 
@@ -247,7 +249,7 @@ public class CompanyRepo {
 							.andThen(persistCompanyPhone.apply(oldCompany, dto.getPhone()))
 							.andThen(persistCompanyAddress.apply(oldCompany, dto.getAddress()))
 							.andThen(persistUserCompanies.apply(oldCompany, dto.getUsersList()))
-							.andThen(persistCompany.apply(oldCompany, dto)).accept(session);
+							.andThen(persistCompany.apply(oldCompany, dto)).execute(session);
 				
 	protected static Function<SecurityDTO.Company, Txn> persistCompanyTree =
 			dto -> 
@@ -255,8 +257,8 @@ public class CompanyRepo {
 				{
 					Company oldCompany = QueryManager.getCompanyById(dto.getCompanyId(), session);
 					if (oldCompany==null)
-						CommandManager.saveCompanyTree.apply(makeCompany.apply(dto).apply(session)).accept(session);
+						CommandManager.saveCompanyTree.apply(makeCompany.apply(dto).apply(session)).execute(session);
 					else
-						persistOldCompanyTree.apply(oldCompany, dto).accept(session);;
+						persistOldCompanyTree.apply(oldCompany, dto).execute(session);
 				};
 }

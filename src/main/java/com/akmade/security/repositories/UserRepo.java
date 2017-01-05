@@ -81,9 +81,14 @@ public class UserRepo {
 		return newUser;
 	};
 
-	protected static BiFunction<UserCompany, UserCompany, Txn> deleteUserCompany = (oldUserCompany,
-			newUserCompany) -> CompanyRepo.isSameUserCompany.test(oldUserCompany, newUserCompany)
-					? CommandManager.deleteUserCompany.apply(oldUserCompany) : CommandManager.doNothing;
+	protected static BiFunction<UserCompany, UserCompany, Txn> deleteUserCompany = 
+		(oldUserCompany, newUserCompany) -> 
+			session -> {
+				if (CompanyRepo.isSameUserCompany.test(oldUserCompany, newUserCompany))
+					CommandManager.deleteUserCompany.apply(oldUserCompany).execute(session);
+				else 
+					CommandManager.doNothing.execute(session);
+			};
 
 	protected static BiFunction<User, SecurityDTO.Account, Qry<UserCompany>> makeUserCompany = 
 			(user, accountDTO) -> session -> CompanyRepo.getUserCompanyForAccount.apply(accountDTO).apply(session);
@@ -92,7 +97,8 @@ public class UserRepo {
 			user, accountDTO) -> session -> {
 				UserCompany newUserCompany = makeUserCompany.apply(user, accountDTO).apply(session);
 				deleteUserCompany.apply(user.getUserCompany(), newUserCompany)
-						.andThen(CommandManager.saveUserCompany.apply(newUserCompany)).accept(session);
+								.andThen(CommandManager.saveUserCompany.apply(newUserCompany))
+				.execute(session);
 			};
 
 	protected static BiFunction<User, SecurityDTO.Account, Txn> persistUser = (oldUser, dto) -> {
@@ -112,16 +118,17 @@ public class UserRepo {
 								.andThen(PhoneRepo.persistPhones.apply(oldUser, dto))
 								.andThen(AddressRepo.persistAddresses.apply(oldUser, dto))
 								.andThen(RoleRepo.persistUserRoles.apply(oldUser, dto.getRolesList()))
-								.andThen(persistUser.apply(oldUser, dto)).accept(session);;
+								.andThen(persistUser.apply(oldUser, dto))
+							.execute(session);;
 
 	protected static Function<SecurityDTO.Account, Txn> persistUserTree = 
 		dto -> 
 			session -> {
 				User oldUser = QueryManager.getUserById(dto.getUserId(), session);
 				if (oldUser == null)
-					CommandManager.saveUserTree.apply(makeNewUser.apply(dto).apply(session)).accept(session);
+					CommandManager.saveUserTree.apply(makeNewUser.apply(dto).apply(session)).execute(session);
 				else
-					persistOldUserTree.apply(oldUser, dto).accept(session);
+					persistOldUserTree.apply(oldUser, dto).execute(session);
 	};
 
 }

@@ -15,6 +15,8 @@ public class CommandRepo extends SessionRepo {
 		this.dataSource = ds;
 	}
 	
+
+	
 	public void saveAddressType(SecurityDTO.Type dto) {
 		logger.info("Making Address Type for: " + dto.getType() + " " + dto.getDescription());
  		AddressRepo.persistAddressType.apply(dto).run(dataSource);

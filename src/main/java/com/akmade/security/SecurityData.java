@@ -66,7 +66,6 @@ public class SecurityData extends ServiceController {
 		}
 	}
 	
-	
 	private Collection<? extends Message> getDTOFromMessage(BusMessage msg) {
 		return msg
 				.getObjectsList()

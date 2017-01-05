@@ -88,14 +88,14 @@ public class AddressRepo {
 				session -> {					
 					AddressType addressType = getAddressTypeByType.apply(addressTypeDTO.getType()).apply(session);
 					if (addressType!=null)
-						CommandManager.saveAddressType.apply(mutateAddressType.apply(addressType).apply(addressTypeDTO)).accept(session);
+						CommandManager.saveAddressType.apply(mutateAddressType.apply(addressType).apply(addressTypeDTO)).execute(session);
 					else
-						CommandManager.saveAddressType.apply(makeAddressType.apply(addressTypeDTO)).accept(session);
+						CommandManager.saveAddressType.apply(makeAddressType.apply(addressTypeDTO)).execute(session);
 				};
 				
 	protected static Function<SecurityDTO.Type, Txn> deleteAddressType =
 			addressTypeDTO ->
-				session -> CommandManager.deleteAddressType.apply(getAddressTypeByType.apply(addressTypeDTO.getType()).apply(session)).accept(session);;
+				session -> CommandManager.deleteAddressType.apply(getAddressTypeByType.apply(addressTypeDTO.getType()).apply(session)).execute(session);
 				
 	protected static Function<User, Function<AddressType, Function<SecurityDTO.Address, Address>>> makeNewAddress = 
 			user -> 
@@ -147,9 +147,9 @@ public class AddressRepo {
 				session -> {
 					Address address = getAddressByUserType.apply(user).apply(addressType).apply(session);
 					if (address == null)
-						CommandManager.saveAddress.apply(makeNewAddress.apply(user).apply(addressType).apply(dto)).accept(session);
+						CommandManager.saveAddress.apply(makeNewAddress.apply(user).apply(addressType).apply(dto)).execute(session);
 					else
-						CommandManager.saveAddress.apply(mutateAddress.apply(address).apply(dto)).accept(session);					
+						CommandManager.saveAddress.apply(mutateAddress.apply(address).apply(dto)).execute(session);					
 					};
 			
 	protected static Function<Collection<Address>, Function<String, Address>> getMyAddress = addresses -> type -> addresses
@@ -165,29 +165,29 @@ public class AddressRepo {
 			(user, accountDTO) -> 
 				session -> {
 						if (accountDTO.getMailingAddress() == null) 
-							CommandManager.deleteAddress.apply(getMailingAddress.apply(user)).accept(session);
+							CommandManager.deleteAddress.apply(getMailingAddress.apply(user)).execute(session);
 						else 
 							getAddresses.apply(user)
 										.apply(getAddressTypeByType.apply(MAILING_ADDRESS).apply(session), accountDTO.getMailingAddress())
-										.accept(session);
+										.execute(session);
 				};
 
 	protected static BiFunction<User, SecurityDTO.Account, Txn> persistShippingAddress = 
 			(user, accountDTO) -> 
 				session -> {
 					if (accountDTO.getShippingAddress() == null)  
-						CommandManager.deleteAddress.apply(getShippinAddress.apply(user)).accept(session);
+						CommandManager.deleteAddress.apply(getShippinAddress.apply(user)).execute(session);
 					else 
 						getAddresses.apply(user)
 									.apply(getAddressTypeByType.apply(SHIPPING_ADDRESS).apply(session), 
 												accountDTO.getShippingAddress())
-									.accept(session);
+									.execute(session);
 				};
 
 	protected static BiFunction<User, SecurityDTO.Account, Txn> persistAddresses = 
 			(user, accountDTO) -> 
 				session -> persistShippingAddress.apply(user, accountDTO)
-							.andThen(persistMailingAddress.apply(user, accountDTO)).accept(session);
+							.andThen(persistMailingAddress.apply(user, accountDTO)).execute(session);
 
 
 

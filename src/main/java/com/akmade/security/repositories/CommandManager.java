@@ -123,8 +123,7 @@ public class CommandManager extends DataSession {
 			companies -> companies
 							.stream()
 							.map(c -> deleteCompanyTree.apply(c))
-							.reduce(Txn::andThen)
-							.orElse(doNothing);
+							.reduce(doNothing,Txn::andThen);
 
 	
 	protected static Function<CompanyAddress, Txn> saveCompanyAddress =
@@ -202,8 +201,7 @@ public class CommandManager extends DataSession {
 	protected static Function<Collection<User>, Txn> saveUserTrees =
 			users -> users.stream()
 						.map(u -> saveUserTree.apply(u))
-						.reduce(Txn::andThen)
-						.orElse(doNothing);
+						.reduce(doNothing,Txn::andThen);
 			
 
 	protected static Function<User, Txn> deleteUser =
@@ -216,7 +214,6 @@ public class CommandManager extends DataSession {
 	protected static Function<Collection<User>, Txn> deleteUsers =
 			users -> users.stream()
 						.map(u -> deleteUser.apply(u))
-						.reduce(Txn::andThen)
-						.orElse(doNothing);
+						.reduce(doNothing, Txn::andThen);
 	
 }
