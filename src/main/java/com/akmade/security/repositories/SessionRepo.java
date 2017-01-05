@@ -1,7 +1,6 @@
 package com.akmade.security.repositories;
 
 import java.util.Objects;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.hibernate.Criteria;
