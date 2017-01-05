@@ -3,7 +3,6 @@ package com.akmade.security.repositories;
 import java.util.Collection;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -15,6 +14,7 @@ import com.akmade.security.data.RoleType;
 import com.akmade.security.data.User;
 import com.akmade.security.data.UserRole;
 import com.akmade.security.data.UserRoleId;
+import com.akmade.security.repositories.SessionRepo.Txn;
 import com.akmade.messaging.security.dto.SecurityDTO;
 
 public class RoleRepo {
@@ -89,33 +89,33 @@ public class RoleRepo {
 	protected static Function<Collection<UserRole>, Predicate<UserRole>> containsUserRole = userRoles -> ur -> userRoles
 			.stream().anyMatch(our -> isSameUserRole.test(our, ur));
 
-	protected static BiFunction<Collection<UserRole>, Collection<UserRole>, Consumer<Session>> deleteUserRoles = (
+	protected static BiFunction<Collection<UserRole>, Collection<UserRole>, Txn> deleteUserRoles = (
 			oldUserRoles, newUserRoles) -> session -> {
 				oldUserRoles.stream().filter(ur -> containsUserRole.apply(newUserRoles).test(ur) != true)
 						.map(ur -> CommandManager.deleteUserRole.apply(ur)).collect(Collectors.toList());
 			};
 			
-	protected static BiFunction<User, Collection<SecurityDTO.Role>, Function<Session, Consumer<Session>>> persistUserRoles = (
-			user, roles) -> session -> {
+	protected static BiFunction<User, Collection<SecurityDTO.Role>, Txn> persistUserRoles = 
+		(user, roles) -> 
+			session -> {
 				Collection<UserRole> newUserRoles = RoleRepo.makeUserRoles.apply(user, roles).apply(session);
-				return deleteUserRoles.apply(user.getUserRoles(), newUserRoles)
-						.andThen(CommandManager.saveUserRoles.apply(newUserRoles));
+				deleteUserRoles.apply(user.getUserRoles(), newUserRoles)
+						.andThen(CommandManager.saveUserRoles.apply(newUserRoles)).accept(session);;
 			};
 			
-					
-	
-	protected static Function<SecurityDTO.Type, Function<Session, Consumer<Session>>> persistRoleType =
+	protected static Function<SecurityDTO.Type, Txn> persistRoleType =
 			roleTypeDTO ->
 				session -> {
 					RoleType roleType =	getRoleTypeByType.apply(roleTypeDTO.getType()).apply(session);
-					return roleType!=null?
-						CommandManager.saveRoleType.apply(mutateRoleType.apply(roleType).apply(roleTypeDTO)):
+					if (roleType!=null)
+						CommandManager.saveRoleType.apply(mutateRoleType.apply(roleType).apply(roleTypeDTO)).accept(session);
+					else
 						CommandManager.saveRoleType.apply(makeRoleType.apply(roleTypeDTO));
 				};
 
-	protected static Function<SecurityDTO.Type, Function<Session, Consumer<Session>>> deleteRoleType =
+	protected static Function<SecurityDTO.Type, Txn> deleteRoleType =
 			roleTypeDTO ->
-				session -> CommandManager.deleteRoleType.apply(getRoleTypeByType.apply(roleTypeDTO.getType()).apply(session));
+				session -> CommandManager.deleteRoleType.apply(getRoleTypeByType.apply(roleTypeDTO.getType()).apply(session)).accept(session);
 
 
 }

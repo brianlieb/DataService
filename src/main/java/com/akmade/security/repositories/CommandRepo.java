@@ -1,8 +1,5 @@
 package com.akmade.security.repositories;
 
-import java.util.function.Consumer;
-import java.util.function.Function;
-
 import org.hibernate.Session;
 
 import com.akmade.security.data.HibernateSessionFactory.DataSource;
@@ -20,22 +17,7 @@ public class CommandRepo extends SessionRepo {
 		this.dataSource = ds;
 	}
 	
-	private Consumer<Session> makeCommand(Function<Session, Consumer<Session>> fn) {
-		Session session = createSession(dataSource);
-		try {
-			return fn.apply(session);
-		} catch (Exception e) {
-			rollback(session);
-			throw logAndThrowError("Error creating the transactions." + e.getMessage());
-		} finally {
-			logger.info("made");
-			endSession(session);
-		}	
-	}
-	
-	private void runCommand(Function<Session, Consumer<Session>> fn) {
-		Consumer<Session> txn = makeCommand(fn);
-		
+	private void runCommand(Txn txn) {
 		Session session = createSession(dataSource);
 		logger.debug("Saving!");
 		try {

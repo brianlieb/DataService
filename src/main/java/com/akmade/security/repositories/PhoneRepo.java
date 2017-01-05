@@ -5,7 +5,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -14,6 +13,7 @@ import org.hibernate.Session;
 import com.akmade.security.data.Phone;
 import com.akmade.security.data.PhoneType;
 import com.akmade.security.data.User;
+import com.akmade.security.repositories.SessionRepo.Txn;
 import com.akmade.messaging.security.dto.SecurityDTO;
 
 import static com.akmade.security.Constants.HOME_PHONE;
@@ -59,18 +59,19 @@ public class PhoneRepo {
 	protected static Function<SecurityDTO.Type, PhoneType> makePhoneType =
 			dto -> new PhoneType(dto.getType(), dto.getDescription(), null);
 	
-	protected static Function<SecurityDTO.Type, Function<Session, Consumer<Session>>> persistPhoneType =
+	protected static Function<SecurityDTO.Type, Txn> persistPhoneType =
 			phoneTypeDTO ->
 				session -> {
 					PhoneType phoneType = getPhoneTypeByType.apply(phoneTypeDTO.getType()).apply(session);
-					return phoneType != null?
-						CommandManager.savePhoneType.apply(mutatePhoneType.apply(phoneType).apply(phoneTypeDTO)):
-						CommandManager.savePhoneType.apply(makePhoneType.apply(phoneTypeDTO));
+					if (phoneType != null)
+						CommandManager.savePhoneType.apply(mutatePhoneType.apply(phoneType).apply(phoneTypeDTO)).accept(session);
+					else
+						CommandManager.savePhoneType.apply(makePhoneType.apply(phoneTypeDTO)).accept(session);
 				};
 				
-	protected static Function<SecurityDTO.Type, Function<Session, Consumer<Session>>> deletePhoneType =
+	protected static Function<SecurityDTO.Type, Txn> deletePhoneType =
 			phoneTypeDTO ->
-				session -> CommandManager.deletePhoneType.apply(getPhoneTypeByType.apply(phoneTypeDTO.getType()).apply(session));
+				session -> CommandManager.deletePhoneType.apply(getPhoneTypeByType.apply(phoneTypeDTO.getType()).apply(session)).accept(session);;
 	
 	protected static Function<User, Function<PhoneType, Function<String, Phone>>> makeNewPhone = user -> phoneType -> phoneDTO -> new Phone(
 			phoneType, user, phoneDTO, new Date(), new Date());
@@ -94,12 +95,13 @@ public class PhoneRepo {
 				.apply(account.getWorkPhone()));
 		return phones;
 	};
-	protected static Function<User, BiFunction<PhoneType, String, Function<Session, Consumer<Session>>>> getPhones = user -> (
+	protected static Function<User, BiFunction<PhoneType, String,Txn>> getPhones = user -> (
 			phoneType, dto) -> session -> {
 				Phone phone = getPhoneByUserType.apply(user).apply(phoneType).apply(session);
-				return phone == null
-						? CommandManager.savePhone.apply(makeNewPhone.apply(user).apply(phoneType).apply(dto))
-						: CommandManager.savePhone.apply(mutatePhone.apply(phone).apply(dto));
+				if(phone == null)
+					CommandManager.savePhone.apply(makeNewPhone.apply(user).apply(phoneType).apply(dto)).accept(session);
+				else
+					CommandManager.savePhone.apply(mutatePhone.apply(phone).apply(dto)).accept(session);
 			};
 
 
@@ -112,34 +114,42 @@ public class PhoneRepo {
 
 	protected static Function<User, Phone> getWorkPhone = user -> getMyPhone.apply(user.getPhones()).apply(WORK_PHONE);
 
-	protected static BiFunction<User, SecurityDTO.Account, Function<Session, Consumer<Session>>> persistHomePhone = (
-			user,
-			accountDTO) -> session -> accountDTO.getHomePhone() == null
-					? CommandManager.deletePhone.apply(getHomePhone.apply(user))
-					: getPhones.apply(user)
-							.apply(getPhoneTypeByType.apply(HOME_PHONE).apply(session), accountDTO.getHomePhone())
-							.apply(session);
+	protected static BiFunction<User, SecurityDTO.Account, Txn> persistHomePhone = 
+		(user, accountDTO) -> 
+			session ->  {
+				if (accountDTO.getHomePhone() == null)
+					CommandManager.deletePhone.apply(getHomePhone.apply(user)).accept(session);
+				else 
+					getPhones.apply(user).apply(getPhoneTypeByType.apply(HOME_PHONE).apply(session), accountDTO.getHomePhone()).accept(session);
+			};
 
-	protected static BiFunction<User, SecurityDTO.Account, Function<Session, Consumer<Session>>> persistWorkPhone = (
-			user,
-			accountDTO) -> session -> accountDTO.getWorkPhone() == null
-					? CommandManager.deletePhone.apply(getWorkPhone.apply(user))
-					: getPhones.apply(user)
+	protected static BiFunction<User, SecurityDTO.Account, Txn> persistWorkPhone = 
+			(user, accountDTO) -> 
+				session -> {
+					if (accountDTO.getWorkPhone() == null)
+						CommandManager.deletePhone.apply(getWorkPhone.apply(user)).accept(session);
+					else
+						getPhones
+							.apply(user)
 							.apply(getPhoneTypeByType.apply(WORK_PHONE).apply(session), accountDTO.getHomePhone())
-							.apply(session);
+							.accept(session);
+				};
 
-	protected static BiFunction<User, SecurityDTO.Account, Function<Session, Consumer<Session>>> persistMobilePhone = (
-			user,
-			accountDTO) -> session -> accountDTO.getMobilePhone() == null
-					? CommandManager.deletePhone.apply(getMobilePhone.apply(user))
-					: getPhones.apply(user)
+	protected static BiFunction<User, SecurityDTO.Account, Txn> persistMobilePhone = 
+		(user, accountDTO) -> 
+			session -> {
+				if (accountDTO.getMobilePhone() == null)
+					CommandManager.deletePhone.apply(getMobilePhone.apply(user)).accept(session);
+				else 
+					getPhones.apply(user)
 							.apply(getPhoneTypeByType.apply(MOBILE_PHONE).apply(session), accountDTO.getHomePhone())
-							.apply(session);
+							.accept(session);
+			};
 
-	protected static BiFunction<User, SecurityDTO.Account, Function<Session, Consumer<Session>>> persistPhones = (
-			user,
-			accountDTO) -> session -> persistHomePhone.apply(user, accountDTO).apply(session)
-					.andThen(persistWorkPhone.apply(user, accountDTO).apply(session))
-					.andThen(persistMobilePhone.apply(user, accountDTO).apply(session));
+	protected static BiFunction<User, SecurityDTO.Account, Txn> persistPhones = 
+			(user, accountDTO) -> 
+				session -> 	persistHomePhone.apply(user, accountDTO)
+								.andThen(persistWorkPhone.apply(user, accountDTO))
+								.andThen(persistMobilePhone.apply(user, accountDTO)).accept(session);;
 
 }

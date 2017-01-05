@@ -1,5 +1,10 @@
 package com.akmade.security.repositories;
 
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+import org.hibernate.Criteria;
 import org.hibernate.FlushMode;
 import org.hibernate.Session;
 import org.hibernate.resource.transaction.spi.TransactionStatus;
@@ -74,5 +79,18 @@ public class SessionRepo {
 		logger.error(msg, ex);
 		return ex;
 	}	
+	
+	
+	@FunctionalInterface
+	public interface Txn extends Consumer<Session>{
+	    default Txn andThen(Consumer<? super Session> after) {
+	        Objects.requireNonNull(after);
+	        return (session) -> { accept(session); after.accept(session); };
+	    }
+	}
+	
+	@FunctionalInterface
+	public interface Qry extends Function<Session, Criteria>{
+	}
 	
 }

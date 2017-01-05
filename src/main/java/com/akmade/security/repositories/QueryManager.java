@@ -1,8 +1,6 @@
 package com.akmade.security.repositories;
 
 import java.util.Collection;
-import java.util.function.Function;
-
 import org.hibernate.Criteria;
 import org.hibernate.Session;
 import org.hibernate.criterion.Restrictions;
@@ -19,49 +17,50 @@ import com.akmade.security.data.RoleType;
 import com.akmade.security.data.User;
 import com.akmade.security.data.UserCompany;
 import com.akmade.security.data.UserRole;
+import com.akmade.security.repositories.SessionRepo.Qry;
 
 public class QueryManager extends DataSession {
 	
-	private static Function<Session, Criteria> phoneTypeQuery = 
+	private static Qry phoneTypeQuery = 
 		session -> session.createCriteria(PhoneType.class, "phoneType");
 	
-	private static Function<Session, Criteria> addressTypeQuery =
+	private static Qry addressTypeQuery =
 			session -> session.createCriteria(AddressType.class, "addressType");
 
-	private static Function<Session, Criteria> roleTypeQuery = 
+	private static Qry roleTypeQuery = 
 			session -> session.createCriteria(RoleType.class, "roleType");
 			
-	private static Function<Session, Criteria> phoneQuery = 
+	private static Qry phoneQuery = 
 			session -> session.createCriteria(Phone.class, "phone")
 											.createAlias("phoneType", "phoneType")
 											.createAlias("user", "user")
 											.setResultTransformer(Criteria.DISTINCT_ROOT_ENTITY);
 	
-	private static Function<Session, Criteria> addressQuery = 
+	private static Qry addressQuery = 
 			session -> session.createCriteria(Address.class, "address")
 												.createAlias("addressType", "addressType")
 												.createAlias("user", "user")
 												.setResultTransformer(Criteria.DISTINCT_ROOT_ENTITY);
 
-	private static Function<Session, Criteria> userQuery = 
+	private static Qry userQuery = 
 			session -> session.createCriteria(User.class, "user");
 			
-	private static Function<Session, Criteria> roleQuery = 
+	private static Qry roleQuery = 
 			session -> session.createCriteria(Role.class, "role");
 							
-	private static Function<Session, Criteria> userCompanyQuery = 
+	private static Qry userCompanyQuery = 
 			session -> session.createCriteria(UserCompany.class, "userCompany")
 								.createAlias("user", "user")
 								.createAlias("company", "company")
 								.setResultTransformer(Criteria.DISTINCT_ROOT_ENTITY);
 			
-	private static Function<Session, Criteria> userRoleQuery = 
+	private static Qry userRoleQuery = 
 			session -> session.createCriteria(UserRole.class, "userRole")
 								.createAlias("user", "user")
 								.createAlias("role", "role")
 								.setResultTransformer(Criteria.DISTINCT_ROOT_ENTITY);
 
-	private static Function<Session, Criteria> companyQuery =
+	private static Qry companyQuery =
 			session -> session.createCriteria(Company.class, "company")
 												.createAlias("companyAddresses", "addresses")
 												.createAlias("companyPhones", "phones")
