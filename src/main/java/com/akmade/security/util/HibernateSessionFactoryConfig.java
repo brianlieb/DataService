@@ -1,4 +1,4 @@
-package com.akmade.security.data;
+package com.akmade.security.util;
 
 import java.io.IOException;
 import java.io.InputStream;

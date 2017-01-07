@@ -4,10 +4,11 @@ import java.util.Collection;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import com.akmade.security.data.HibernateSessionFactory.DataSource;
+import com.akmade.security.util.SessionUtility;
+import com.akmade.security.util.HibernateSessionFactory.DataSource;
 import com.akmade.messaging.security.dto.SecurityDTO;
 
-public class QueryRepo extends SessionRepo {
+public class QueryRepo extends SessionUtility {
 	private DataSource dataSource = DataSource.DEFAULT;
 
 	public QueryRepo() {

@@ -1,8 +1,6 @@
-package com.akmade.security.repositories;
+package com.akmade.security.util;
 
-import java.util.Objects;
 import java.util.function.Function;
-
 import org.hibernate.Criteria;
 import org.hibernate.FlushMode;
 import org.hibernate.Session;
@@ -11,14 +9,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.akmade.exceptions.UnrecoverableException;
-import com.akmade.security.data.HibernateSessionFactory;
-import com.akmade.security.data.HibernateSessionFactory.DataSource;
+import com.akmade.security.util.HibernateSessionFactory.DataSource;
 
-public class SessionRepo {
-	protected static Logger logger = LoggerFactory.getLogger(SessionRepo.class);
+public class SessionUtility {
+	protected static Logger logger = LoggerFactory.getLogger(SessionUtility.class);
 
 
-	public SessionRepo () {
+	public SessionUtility () {
 	}
 	
 	protected static Session createSession(DataSource ds) {
@@ -81,49 +78,7 @@ public class SessionRepo {
 	
 	
 	@FunctionalInterface
-	public interface Txn {
-		
-	    void execute(Session s);
-		
-		
-	    default Txn andThen(Txn after) {
-	        Objects.requireNonNull(after);
-	        return (session) -> { execute(session); after.execute(session); };
-	    }
-	    
-		default void run(DataSource ds) {
-			Session session = createSession(ds);
-			logger.debug("Saving!");
-			try {
-				this.execute(session);
-			} catch (Exception e) {
-				rollbackAndClose(session);
-				throw logAndThrowError("Error running the transaction. " + e.getMessage());
-			} finally {
-				logger.debug("saved");
-				endSession(session);
-			}			
-		}
-	}
-	
-	@FunctionalInterface
 	public interface CritQuery extends Function<Session, Criteria>{
-	}
-	
-	@FunctionalInterface
-	public interface Qry<T> extends Function<Session, T>{
-		default T run(DataSource ds) {
-			Session session = createSession(ds);
-			logger.debug("Running query."); 
-			try {
-				return this.apply(session);
-			} catch (Exception e) {
-				rollbackAndClose(session);
-				throw logAndThrowError("Error running the query. " + e.getMessage());
-			} finally {
-				endSession(session);
-			}
-		}
 	}
 	
 }

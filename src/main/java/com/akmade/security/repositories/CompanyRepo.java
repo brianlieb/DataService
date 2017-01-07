@@ -1,5 +1,7 @@
 package com.akmade.security.repositories;
 
+import static com.akmade.security.util.RepositoryUtility.*;
+
 import java.util.Collection;
 import java.util.Date;
 import java.util.function.BiFunction;
@@ -8,16 +10,162 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.hibernate.Criteria;
+import org.hibernate.criterion.Restrictions;
+
 import com.akmade.security.data.Company;
 import com.akmade.security.data.CompanyAddress;
 import com.akmade.security.data.CompanyPhone;
 import com.akmade.security.data.User;
 import com.akmade.security.data.UserCompany;
-import com.akmade.security.repositories.SessionRepo.Qry;
-import com.akmade.security.repositories.SessionRepo.Txn;
+import com.akmade.security.util.Qry;
+import com.akmade.security.util.SessionUtility.CritQuery;
+import com.akmade.security.util.Transaction.Txn;
 import com.akmade.messaging.security.dto.SecurityDTO;
 
+
 public class CompanyRepo {
+	
+	private static CritQuery userCompanyQuery = 
+			session -> session.createCriteria(UserCompany.class, "userCompany")
+								.createAlias("user", "user")
+								.createAlias("company", "company")
+								.setResultTransformer(Criteria.DISTINCT_ROOT_ENTITY);
+			
+
+	private static CritQuery companyQuery =
+			session -> session.createCriteria(Company.class, "company")
+												.createAlias("companyAddresses", "addresses")
+												.createAlias("companyPhones", "phones")
+												.createAlias("userCompanies", "userCompanies")
+												.createAlias("userCompanies.user", "user")
+												.setResultTransformer(Criteria.DISTINCT_ROOT_ENTITY);
+			
+			
+	@SuppressWarnings("unchecked")
+	protected static Qry<Collection<Company>> getCompanies = 
+		session -> {
+			try {
+				return companyQuery
+						.apply(session)
+						.list();
+			} catch (Exception e) {
+				throw logAndThrowError("Error getting companies. " + e.getMessage());
+			} 
+		};
+	
+	protected static Function<Integer, Qry<Company>> getCompanyById = 
+		companyId ->
+			session -> {
+				try {
+					return (Company)companyQuery
+									.apply(session)
+									.add(Restrictions.eq("companyId", companyId))
+									.uniqueResult();
+				} catch (Exception e) {
+					throw logAndThrowError("Error getting company. " + e.getMessage());
+				} 
+			};
+	
+	
+	protected static Function<Company, Qry<CompanyPhone>> getCompanyPhoneByCompany = 
+		company ->
+			session -> {
+				try {
+					Company com = (Company)companyQuery
+												.apply(session)
+												.add(Restrictions.eq("companyId", company.getCompanyId()))
+												.uniqueResult();
+				
+					return com!=null?com.getCompanyPhone():null;
+					
+				} catch (Exception e) {
+					throw logAndThrowError("Error getting company. " + e.getMessage());
+				} 
+			};
+
+	
+	protected static Function<Company, Qry<CompanyAddress>> getCompanyAddressByCompany =
+		company ->
+			session -> {
+				try {
+					Company com = (Company)companyQuery
+												.apply(session)
+												.add(Restrictions.eq("companyId", company.getCompanyId()))
+												.uniqueResult();
+				
+					return com!=null?com.getCompanyAddress():null;
+					
+				} catch (Exception e) {
+					throw logAndThrowError("Error getting company. " + e.getMessage());
+				} 
+			};
+	
+	
+	protected static Function<Integer, Function<Integer, Qry<UserCompany>>> getUserCompany =
+		companyId -> 
+			userId ->
+				session -> {
+					try {
+						return (UserCompany)userCompanyQuery
+												.apply(session)
+												.add(Restrictions.eq("user.userId", userId))
+												.add(Restrictions.eq("company.companyId", companyId))
+												.uniqueResult();
+					} catch(Exception e){
+						throw logAndThrowError("Error getting user.", e);
+					}
+				};
+	
+	
+	protected static Function<CompanyAddress, Txn> deleteAddress =
+			companyAddress -> prepareTransaction.apply(delete).apply(companyAddress);
+			
+	protected static Function<CompanyAddress, Txn> saveAddress =
+			companyAddress -> prepareTransaction.apply(save).apply(companyAddress);
+			
+			
+	protected static Function<CompanyPhone, Txn> deletePhone =
+			companyPhone -> prepareTransaction.apply(delete).apply(companyPhone);
+							
+	protected static Function<UserCompany, Txn> deleteUserCompany = 
+			userCompany ->	prepareTransaction.apply(delete).apply(userCompany);
+			
+	protected static Function<Collection<UserCompany>, Txn> deleteUserCompanies = 
+			userCompanies -> prepareTransaction(delete, userCompanies);
+	
+	protected static Function<Company, Txn> deleteCompanyTree = 
+			company ->	deleteAddress.apply(company.getCompanyAddress())
+											.andThen(deletePhone.apply(company.getCompanyPhone()))
+											.andThen(deleteUserCompanies.apply(company.getUserCompanies()))
+											.andThen(prepareTransaction.apply(delete).apply(company));
+			
+	protected static Function<Collection<Company>, Txn> deleteCompanyTrees =
+			companies -> companies
+							.stream()
+							.map(c -> deleteCompanyTree.apply(c))
+							.reduce(doNothing,Txn::andThen);
+
+								
+	protected static Function<CompanyPhone, Txn> savePhone =
+			companyPhone -> prepareTransaction.apply(save).apply(companyPhone);
+			
+	protected static Function<UserCompany, Txn> saveUserCompany = 
+			companyUser ->	prepareTransaction.apply(save).apply(companyUser);
+										
+	protected static Function<Collection<UserCompany>, Txn> saveUserCompanies = 
+			companyUsers ->	prepareTransaction(save, companyUsers);
+
+	protected static Function<Company, Txn> saveCompany =
+			company -> prepareTransaction.apply(save).apply(company);
+
+	protected static Function<Company, Txn> saveCompanyTree = 
+			company ->  saveCompany.apply(company)
+							.andThen(saveAddress.apply(company.getCompanyAddress()))
+							.andThen(savePhone.apply(company.getCompanyPhone()))
+							.andThen(saveUserCompanies.apply(company.getUserCompanies()));
+	
+
 	protected static Function<CompanyPhone, String> makeNewCompanyPhone = 
 			p -> p!=null?p.getPhone():null;
 
@@ -45,28 +193,24 @@ public class CompanyRepo {
 					return oldPhone;
 				};
 	
-	protected static Function<Company, Qry<CompanyPhone>> getCompanyPhoneByCompany =
-			company ->
-				session -> QueryManager.getCompanyPhoneByCompany(company, session);
-				
 	protected static BiFunction<Company, String, Txn> saveCompanyPhone =
 		(company, phoneDTO) ->
 			session -> {
-				CompanyPhone phone = getCompanyPhoneByCompany.apply(company).apply(session);
+				CompanyPhone phone = getCompanyPhoneByCompany.apply(company).execute(session);
 				if (phone!=null) 
-					CommandManager.saveCompanyPhone.apply(mutateCompanyPhone.apply(phone).apply(phoneDTO)).execute(session);
+					savePhone.apply(mutateCompanyPhone.apply(phone).apply(phoneDTO)).execute(session);
 				else
-					CommandManager.saveCompanyPhone.apply(makeCompanyPhone.apply(company).apply(phoneDTO)).execute(session);
+					savePhone.apply(makeCompanyPhone.apply(company).apply(phoneDTO)).execute(session);
 		};
 		
 	protected static Function<Company, Txn> deleteCompanyPhone = 
 		company -> 
 			session -> {
-				CompanyPhone phone = getCompanyPhoneByCompany.apply(company).apply(session);
+				CompanyPhone phone = getCompanyPhoneByCompany.apply(company).execute(session);
 				if (phone!=null)
-					CommandManager.deleteCompanyPhone.apply(phone).execute(session);
+					deletePhone.apply(phone).execute(session);
 				else 
-					CommandManager.doNothing.execute(session);
+					doNothing.execute(session);
 			};
 				
 	protected static BiFunction<Company, String, Txn> persistCompanyPhone =
@@ -105,28 +249,24 @@ public class CompanyRepo {
 					return oldAddress;
 				};
 				
-	protected static Function<Company, Qry<CompanyAddress>> getCompanyAddressByCompany =
-			company ->
-				session -> QueryManager.getCompanyAddressByCompany(company, session);
-				
 	protected static BiFunction<Company, SecurityDTO.Address, Txn> saveCompanyAddress =
 			(company, dto) ->
 				session -> {
-					CompanyAddress address = getCompanyAddressByCompany.apply(company).apply(session);
+					CompanyAddress address = getCompanyAddressByCompany.apply(company).execute(session);
 					if (address!=null)
-						CommandManager.saveCompanyAddress.apply(mutateCompanyAddress.apply(address).apply(dto)).execute(session);
+						saveAddress.apply(mutateCompanyAddress.apply(address).apply(dto)).execute(session);
 					else
-						CommandManager.saveCompanyAddress.apply(makeCompanyAddress.apply(company).apply(dto)).execute(session);
+						saveAddress.apply(makeCompanyAddress.apply(company).apply(dto)).execute(session);
 			};
 			
 	protected static Function<Company, Txn> deleteCompanyAddress = 
 		company -> 
 			session ->{
-				CompanyAddress address = getCompanyAddressByCompany.apply(company).apply(session);
+				CompanyAddress address = getCompanyAddressByCompany.apply(company).execute(session);
 				if (address!=null)
-						CommandManager.deleteCompanyAddress.apply(address).execute(session);
+						deleteAddress.apply(address).execute(session);
 				else 
-						CommandManager.doNothing.execute(session);
+						doNothing.execute(session);
 				};
 	
 	protected static BiFunction<Company, SecurityDTO.Address, Txn> persistCompanyAddress =
@@ -143,7 +283,7 @@ public class CompanyRepo {
 	protected static BiFunction<Company, SecurityDTO.Account, Qry<UserCompany>> makeUserCompany =
 			(company, account) -> 
 				session -> {
-						User user = UserRepo.getDBUser.apply(account).apply(session);
+						User user = UserRepo.getDBUser.apply(account).execute(session);
 						return user != null?
 							new UserCompany(company, 
 											user,
@@ -162,27 +302,27 @@ public class CompanyRepo {
 					return userCompany;
 			};
 
-	protected static BiFunction<Company, SecurityDTO.Account, Qry<UserCompany>> getUserCompany =
+	protected static BiFunction<Company, SecurityDTO.Account, Qry<UserCompany>> getNewUserCompany =
 		(company, dto) ->
 			session -> {
-				UserCompany uCompany = QueryManager.getUserCompany(company.getCompanyId(), dto.getUserId(), session);
+				UserCompany uCompany = getUserCompany.apply(company.getCompanyId()).apply(dto.getUserId()).execute(session);
 				return uCompany!=null?
 						mutateUserCompany.apply(uCompany).apply(dto):
-						makeUserCompany.apply(company, dto).apply(session);
+						makeUserCompany.apply(company, dto).execute(session);
 			};
 			
 	protected static Function<SecurityDTO.Account, Qry<UserCompany>> getUserCompanyForAccount =
 			(accountDTO) ->
 				session -> 	{
-					Company oldCompany = QueryManager.getCompanyById(accountDTO.getCompany().getCompanyId(), session);
-					return getUserCompany.apply(oldCompany, accountDTO).apply(session);
+					Company oldCompany = getCompanyById.apply(accountDTO.getCompany().getCompanyId()).execute(session);
+					return getUserCompany.apply(oldCompany.getCompanyId()).apply(accountDTO.getUserId()).execute(session);
 				};
 					
 	protected static BiFunction<Company, Collection<SecurityDTO.Account>, Qry<Collection<UserCompany>>> makeUserCompanies =
 			(company, accounts) -> 
 					session -> accounts
 									.stream()
-									.map(acct -> getUserCompany.apply(company, acct).apply(session))
+									.map(acct -> getNewUserCompany.apply(company, acct).execute(session))
 									.collect(Collectors.toSet());
 					
 				
@@ -199,7 +339,7 @@ public class CompanyRepo {
 				
 					company.setCompanyPhone(makeCompanyPhone.apply(company).apply(dto.getPhone()));
 					company.setCompanyAddress(makeCompanyAddress.apply(company).apply(dto.getAddress()));
-					company.getUserCompanies().addAll(makeUserCompanies.apply(company, dto.getUsersList()).apply(session));
+					company.getUserCompanies().addAll(makeUserCompanies.apply(company, dto.getUsersList()).execute(session));
 					return company;
 			};
 				
@@ -216,23 +356,23 @@ public class CompanyRepo {
 						.anyMatch(ouc -> isSameUserCompany.test(ouc, uc));							
 					
 				
-	protected static BiFunction<Collection<UserCompany>, Collection<UserCompany>, Txn> deleteUserCompanies =
+	protected static BiFunction<Collection<UserCompany>, Collection<UserCompany>, Txn> deleteUsersCompanies =
 		(oldUsers, newUsers) ->
 			session -> {
 				oldUsers
 					.stream()
 					.filter(uc -> containsUserCompany.apply(newUsers).test(uc)!=true)
-					.map(uc -> CommandManager.deleteUserCompany.apply(uc))
-					.reduce(CommandManager.doNothing,Txn::andThen)
+					.map(uc -> deleteUserCompany.apply(uc))
+					.reduce(doNothing,Txn::andThen)
 					.execute(session);
 			};
 			
 	protected static BiFunction<Company, Collection<SecurityDTO.Account>, Txn> persistUserCompanies =
 			(company, accounts) ->
 				session -> {
-					Collection<UserCompany> newUserCompanies = makeUserCompanies.apply(company, accounts).apply(session);
-					deleteUserCompanies.apply(company.getUserCompanies(), newUserCompanies)
-										.andThen(CommandManager.saveUserCompanies.apply(newUserCompanies)).execute(session);
+					Collection<UserCompany> newUserCompanies = makeUserCompanies.apply(company, accounts).execute(session);
+					deleteUsersCompanies.apply(company.getUserCompanies(), newUserCompanies)
+										.andThen(saveUserCompanies.apply(newUserCompanies)).execute(session);
 				};
 			
 	protected static BiFunction<Company, SecurityDTO.Company, Txn> persistCompany =
@@ -240,7 +380,7 @@ public class CompanyRepo {
 			session -> {
 			oldCompany.setCompany(dto.getCompany());
 			oldCompany.setLastmodifiedDate(new Date());
-			CommandManager.saveCompany.apply(oldCompany).execute(session);
+			saveCompany.apply(oldCompany).execute(session);
 		};	
 						
 	protected static BiFunction<Company, SecurityDTO.Company, Txn> persistOldCompanyTree = 
@@ -255,9 +395,9 @@ public class CompanyRepo {
 			dto -> 
 				session -> 
 				{
-					Company oldCompany = QueryManager.getCompanyById(dto.getCompanyId(), session);
+					Company oldCompany = getCompanyById.apply(dto.getCompanyId()).execute(session);
 					if (oldCompany==null)
-						CommandManager.saveCompanyTree.apply(makeCompany.apply(dto).apply(session)).execute(session);
+						saveCompanyTree.apply(makeCompany.apply(dto).execute(session)).execute(session);
 					else
 						persistOldCompanyTree.apply(oldCompany, dto).execute(session);
 				};
